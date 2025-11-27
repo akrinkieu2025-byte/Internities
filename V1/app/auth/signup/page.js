@@ -1,15 +1,24 @@
 "use client";
 
-import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+export const dynamic = 'force-dynamic';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function StudentSignupPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const roleFromURL = searchParams?.get('role') || 'student';
+  const [roleFromURL, setRoleFromURL] = useState('student');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const r = params.get('role');
+      if (r) setRoleFromURL(r);
+    }
+  }, []);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

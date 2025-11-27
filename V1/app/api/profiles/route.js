@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Server-side Supabase admin client using the Service Role key.
-// IMPORTANT: set SUPABASE_SERVICE_ROLE_KEY and SUPABASE_URL in your deployment environment.
-const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
-  auth: {
-    persistSession: false,
-  },
-});
+// Create the admin client lazily to avoid throwing at module import time
+// when environment variables are not configured (which would break builds).
+function getSupabaseAdmin() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key, { auth: { persistSession: false } });
+}
 
 export async function POST(request) {
   try {
@@ -19,11 +20,13 @@ export async function POST(request) {
     }
 
     // Insert profile using admin privileges (bypasses RLS)
-    const { data, error } = await supabaseAdmin
-      .from('profiles')
-      .insert([{ id, email, role }])
-      .select()
-      .single();
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
+      console.error('[api/profiles] missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+      return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
+    }
+
+    const { data, error } = await supabaseAdmin.from('profiles').insert([{ id, email, role }]).select().single();
 
     if (error) {
       console.error('[api/profiles] insert error:', error);

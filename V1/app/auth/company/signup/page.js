@@ -88,7 +88,7 @@ export default function CompanySignupPage() {
               <button type="submit" disabled={loading} className="w-full bg-brand-primary text-white font-semibold py-2 rounded-lg hover:bg-blue-600 transition disabled:opacity-50">{loading ? 'Creating...' : 'Create Account'}</button>
             </form>
 
-            <p± className="text-center text-gray-400 mt-6">Already have an account? <Link href="/auth/company/login"><span className="text-brand-primary hover:underline">Login</span></Link></p>
+            <p className="text-center text-gray-400 mt-6">Already have an account? <Link href="/auth/company/login"><span className="text-brand-primary hover:underline">Login</span></Link></p>
           </div>
         </div>
       </main>
