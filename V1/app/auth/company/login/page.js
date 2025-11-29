@@ -142,7 +142,7 @@ export default function CompanyLoginPage() {
             </form>
 
             <p className="text-center text-gray-400 mt-6">
-              Don't have a company account?{' '}
+              Don&apos;t have a company account?{' '}
               <Link
                 href="/auth/company/signup"
                 className="text-indigo-400 hover:text-indigo-300 font-medium"

@@ -157,7 +157,7 @@ export default function LoginPage() {
             </form>
 
             <p className="text-center text-gray-400 mt-6">
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Link href={`/auth/signup${roleFromURL ? `?role=${roleFromURL}` : ''}`} className="text-brand-primary hover:underline">
                 Sign Up
               </Link>
