@@ -100,6 +100,24 @@ button {
   left: 100%;
 }
 
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.85);
+  backdrop-filter: blur(18px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 70;
+}
+
+.modal-panel {
+  width: min(500px, 100%);
+  border-radius: 1.5rem;
+}
+
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
   width: 8px;
