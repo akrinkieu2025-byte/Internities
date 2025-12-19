@@ -578,10 +578,10 @@ export default function Home() {
             >
               <p className="text-sm text-brand-light/70 mb-3">Email us and we’ll respond within 24 hours.</p>
               <a
-                href="mailto:hello@internities.com"
+                href="mailto:hello@internities.de"
                 className="btn-premium neon-border w-full inline-flex justify-center px-6 py-3 rounded-2xl text-sm font-semibold"
               >
-                hello@internities.com
+                hello@internities.de
               </a>
             </motion.div>
           </div>
