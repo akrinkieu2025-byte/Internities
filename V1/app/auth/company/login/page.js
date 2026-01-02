@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabaseClient';
+import { fetchWithAuth } from '@/lib/fetchWithAuth';
 
 export default function CompanyLoginPage() {
   const router = useRouter();
@@ -71,9 +72,23 @@ export default function CompanyLoginPage() {
 
       if (profile.role !== 'company') {
         console.warn('[company-login] User role is not company:', profile.role);
-        setError('This account is not registered as a company. Please sign up for a company account.');
-        setLoading(false);
-        return;
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ role: 'company' })
+          .eq('id', user.id);
+        if (updateError) {
+          console.error('[company-login] Profile role upgrade failed:', updateError);
+          setError('This account is registered as student. Try company signup or contact support.');
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Ensure company + membership exists
+      try {
+        await fetchWithAuth('/api/company/bootstrap', { method: 'POST' }, supabase, signInData.session);
+      } catch (e) {
+        console.warn('[company-login] bootstrap failed', e);
       }
 
       console.log('[company-login] Company profile verified, redirecting to dashboard');

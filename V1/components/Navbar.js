@@ -42,18 +42,20 @@ export default function Navbar({ onTryDemoClick = () => {} }) {
   return (
     <nav className="fixed top-0 w-full z-50 backdrop-blur-md bg-gradient-to-b from-brand-dark/80 to-brand-dark/20 border-b border-brand-primary/10">
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
-        <div className="flex justify-between items-center h-20">
-          {/* Logo with Gradient */}
-          <Link
-            href="/"
-            className="text-3xl font-bold tracking-tight hover:scale-105 transition-transform duration-300"
-          >
-            <span className="gradient-text-purple">Internities</span>
-          </Link>
+        <div className="grid grid-cols-3 items-center h-20">
+          {/* Logo left */}
+          <div className="flex items-center">
+            <Link
+              href="/"
+              className="text-3xl font-bold tracking-tight hover:scale-105 transition-transform duration-300"
+            >
+              <span className="gradient-text-purple">Internities</span>
+            </Link>
+          </div>
 
-          {/* Navigation Links */}
-          {!isLanding && (
-            <div className="hidden md:flex gap-12 items-center">
+          {/* Navigation center */}
+          <div className="flex items-center justify-center">
+            <div className="flex gap-12 items-center">
               {!hideHomeLink && (
                 <Link
                   href="/"
@@ -62,39 +64,35 @@ export default function Navbar({ onTryDemoClick = () => {} }) {
                   Home
                 </Link>
               )}
-              {!user ? (
-                <Link
-                  href="/auth/login"
-                  className="text-brand-light/80 hover:text-brand-primary transition-colors duration-300 font-medium text-sm tracking-wide"
-                >
-                  Login
-                </Link>
-              ) : (
-                <button
-                  onClick={handleLogout}
-                  className="text-brand-light/80 hover:text-brand-primary transition-colors duration-300 font-medium text-sm tracking-wide"
-                >
-                  Logout
-                </button>
+              {!isLanding && (
+                !user ? (
+                  <Link
+                    href="/auth/login"
+                    className="text-brand-light/80 hover:text-brand-primary transition-colors duration-300 font-medium text-sm tracking-wide"
+                  >
+                    Login
+                  </Link>
+                ) : (
+                  <button
+                    onClick={handleLogout}
+                    className="text-brand-light/80 hover:text-brand-primary transition-colors duration-300 font-medium text-sm tracking-wide"
+                  >
+                    Logout
+                  </button>
+                )
               )}
             </div>
-          )}
+          </div>
 
-          {/* CTA Button */}
-          <div className="flex items-center gap-4">
-            {isLanding ? (
+          {/* CTA right (landing only) or spacer */}
+          <div className="flex items-center justify-end">
+            {isLanding && (
               <button
                 onClick={onTryDemoClick}
                 className="btn-premium neon-border px-6 py-2.5 rounded-lg text-brand-light text-sm font-semibold shadow-glow-blue hover:shadow-glow-lg transition-all duration-300"
               >
                 Try demo
               </button>
-            ) : (
-              <Link href="/get-started">
-                <button className="btn-premium neon-border px-6 py-2.5 rounded-lg text-brand-light text-sm font-semibold shadow-glow-blue hover:shadow-glow-lg transition-all duration-300">
-                  Get Started
-                </button>
-              </Link>
             )}
           </div>
         </div>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabaseClient';
+import { fetchWithAuth } from '@/lib/fetchWithAuth';
 
 export default function CompanySignupPage() {
   const router = useRouter();
@@ -26,8 +27,35 @@ export default function CompanySignupPage() {
     setLoading(true);
     try {
       const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
+
+      // If the user already exists, try signing in and upgrading the profile to company
       if (signUpError) {
-        setError(signUpError.message || 'Signup failed');
+        const isAlreadyRegistered = signUpError?.message?.toLowerCase()?.includes('already registered');
+        if (!isAlreadyRegistered) {
+          setError(signUpError.message || 'Signup failed');
+          setLoading(false);
+          return;
+        }
+
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) {
+          setError('Account already exists. Use the correct password to sign in or reset it.');
+          setLoading(false);
+          return;
+        }
+
+        const existingId = signInData?.user?.id;
+        if (existingId) {
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ role: 'company', email })
+            .eq('id', existingId);
+          if (updateError) {
+            console.warn('profile update error', updateError);
+          }
+        }
+
+        router.push('/company/profile');
         setLoading(false);
         return;
       }
@@ -42,13 +70,22 @@ export default function CompanySignupPage() {
       }
 
       if (idToUse) {
-        const { error: insertError } = await supabase.from('profiles').insert([{ id: idToUse, email, role: 'company' }]);
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .upsert([{ id: idToUse, email, role: 'company' }]);
         if (insertError) {
           console.warn('profile insert error', insertError);
         }
       }
 
-      router.push('/company');
+      // Ensure company + membership is created
+      try {
+        await fetchWithAuth('/api/company/bootstrap', { method: 'POST' }, supabase);
+      } catch (e) {
+        console.warn('company bootstrap failed', e);
+      }
+
+      router.push('/company/profile');
     } catch (err) {
       setError(err?.message || 'Signup error');
     } finally {

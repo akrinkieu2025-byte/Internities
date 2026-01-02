@@ -1,0 +1,2 @@
+-- Placeholder to align with remote migration history (already applied upstream).
+-- No-op migration.

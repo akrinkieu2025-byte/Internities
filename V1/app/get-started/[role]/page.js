@@ -25,21 +25,21 @@ export default function RoleSelectionPage({ params }) {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <Link href={signupPath} className="group">
-              <div className={`transform hover:-translate-y-1 transition-all duration-200 bg-slate-800 border border-slate-700 rounded-xl p-8 text-center`}>
+            <Link href={signupPath} className="group block h-full">
+              <div className="h-full transform hover:-translate-y-1 transition-all duration-200 bg-slate-800 border border-slate-700 rounded-xl p-8 text-center flex flex-col justify-between">
                 <h2 className="text-xl font-semibold text-white">Sign Up</h2>
                 <p className="mt-2 text-gray-400">Create a new {isStudent ? 'student' : 'company'} account.</p>
-                <div className={`mt-6 inline-flex items-center gap-3 px-4 py-2 rounded-lg ${isStudent ? 'bg-blue-600 hover:bg-blue-500' : 'bg-purple-600 hover:bg-purple-500'} text-white font-medium transition`}>
+                <div className={`mt-6 inline-flex w-full justify-center items-center gap-3 px-4 py-2 rounded-lg ${isStudent ? 'bg-blue-600 hover:bg-blue-500' : 'bg-purple-600 hover:bg-purple-500'} text-white font-medium transition`}>
                   {isStudent ? 'Create Student Account' : 'Create Company Account'}
                 </div>
               </div>
             </Link>
 
-            <Link href={loginPath} className="group">
-              <div className={`transform hover:-translate-y-1 transition-all duration-200 bg-slate-800 border border-slate-700 rounded-xl p-8 text-center`}>
+            <Link href={loginPath} className="group block h-full">
+              <div className="h-full transform hover:-translate-y-1 transition-all duration-200 bg-slate-800 border border-slate-700 rounded-xl p-8 text-center flex flex-col justify-between">
                 <h2 className="text-xl font-semibold text-white">Login</h2>
                 <p className="mt-2 text-gray-400">Sign in to your {isStudent ? 'student' : 'company'} account.</p>
-                <div className={`mt-6 inline-flex items-center gap-3 px-4 py-2 rounded-lg ${isStudent ? 'bg-blue-600 hover:bg-blue-500' : 'bg-purple-600 hover:bg-purple-500'} text-white font-medium transition`}>
+                <div className={`mt-6 inline-flex w-full justify-center items-center gap-3 px-4 py-2 rounded-lg ${isStudent ? 'bg-blue-600 hover:bg-blue-500' : 'bg-purple-600 hover:bg-purple-500'} text-white font-medium transition`}>
                   {isStudent ? 'Student Login' : 'Company Login'}
                 </div>
               </div>
