@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export async function GET(_req, { params }) {
-  if (!supabase) return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+  if (!supabaseAdmin) return NextResponse.json({ error: 'Supabase admin not configured' }, { status: 500 });
   const id = params?.id;
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
-  const { data: role, error: roleError } = await supabase
+  const { data: role, error: roleError } = await supabaseAdmin
     .from('roles_public_view')
     .select('*')
     .eq('id', id)
@@ -14,7 +14,7 @@ export async function GET(_req, { params }) {
   if (roleError) return NextResponse.json({ error: roleError.message }, { status: 500 });
   if (!role) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const { data: answers, error: ansError } = await supabase
+  const { data: answers, error: ansError } = await supabaseAdmin
     .from('role_public_answers_view')
     .select('*')
     .eq('role_id', id);
