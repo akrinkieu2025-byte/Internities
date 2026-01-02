@@ -374,7 +374,7 @@ export default function MatchRadarAnimation() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.1 }}
           >
-            98% match • It's a match
+            98% match • It&apos;s a match
           </motion.text>
         )}
       </svg>
