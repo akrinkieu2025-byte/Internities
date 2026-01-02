@@ -13,7 +13,7 @@ export default function TeamSection({ founders }) {
           eyebrow="Team"
           title="The founders."
         />
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 sm:[&>div:last-child]:col-span-2 sm:[&>div:last-child]:justify-self-center">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 sm:[&>div:last-child]:col-span-2 sm:[&>div:last-child]:justify-self-center lg:[&>div:last-child]:col-span-1 lg:[&>div:last-child]:justify-self-auto">
           {founders.map((founder, index) => (
             <Reveal key={founder.name} delay={index * 0.06}>
               <div className="glass-card rounded-3xl border border-white/10 p-6 text-center transition duration-200 hover:-translate-y-1 hover:border-brand-accent/50 hover:shadow-glow-md">
