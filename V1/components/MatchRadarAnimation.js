@@ -86,10 +86,10 @@ export default function MatchRadarAnimation() {
   const animationEnabled = inView && !prefersReducedMotion;
 
   const size = performanceMode ? 160 : 400;
-  const padding = performanceMode ? 20 : 48;
+  const padding = performanceMode ? 40 : 64;
   const paddedSize = size + padding * 2;
   const center = paddedSize / 2;
-  const radius = performanceMode ? 70 : 170;
+  const radius = performanceMode ? 65 : 170;
   const gridLevels = performanceMode ? 3 : 5;
 
   const companyValues = useMemo(() => [0.9, 0.74, 0.86, 0.78, 0.82, 0.88], []);
@@ -184,7 +184,7 @@ export default function MatchRadarAnimation() {
     const angleStep = (Math.PI * 2) / axisLabels.length;
     return axisLabels.map((label, i) => {
       const angle = -Math.PI / 2 + i * angleStep;
-      const r = radius + (performanceMode ? 2 : 24);
+      const r = radius + (performanceMode ? 12 : 24);
       const x = center + r * Math.cos(angle);
       const y = center + r * Math.sin(angle);
       const cos = Math.cos(angle);
@@ -296,7 +296,7 @@ export default function MatchRadarAnimation() {
             dominantBaseline="middle"
             fill="rgba(255,255,255,0.86)"
               className="font-semibold uppercase"
-              style={{ fontSize: performanceMode ? '6.6px' : '12px', letterSpacing: performanceMode ? '0.08em' : '0.18em' }}
+              style={{ fontSize: performanceMode ? '8px' : '12px', letterSpacing: performanceMode ? '0.08em' : '0.18em' }}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.68 + pos.dx * 0.02, duration: 0.6 }}
