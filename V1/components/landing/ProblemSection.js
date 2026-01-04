@@ -11,7 +11,7 @@ export default function ProblemSection({ problemCards }) {
         <SectionHeader
           eyebrow="Problem"
           title="The internship market is overcrowded and inefficient."
-          description="Internship hiring is broken: students apply at scale, companies reject at scale, and real potential gets lost."
+          description="Internship hiring is broken: students apply at scale, companies reject at scale and real potential gets lost."
           align="left"
         />
         <div className="grid md:grid-cols-2 gap-6">
