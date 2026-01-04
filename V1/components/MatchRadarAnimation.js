@@ -85,11 +85,11 @@ export default function MatchRadarAnimation() {
   const performanceMode = isMobilePerf || prefersReducedMotion;
   const animationEnabled = inView && !prefersReducedMotion;
 
-  const size = performanceMode ? 180 : 400;
-  const padding = performanceMode ? 22 : 48;
+  const size = performanceMode ? 160 : 400;
+  const padding = performanceMode ? 20 : 48;
   const paddedSize = size + padding * 2;
   const center = paddedSize / 2;
-  const radius = performanceMode ? 82 : 170;
+  const radius = performanceMode ? 70 : 170;
   const gridLevels = performanceMode ? 3 : 5;
 
   const companyValues = useMemo(() => [0.9, 0.74, 0.86, 0.78, 0.82, 0.88], []);
@@ -184,7 +184,7 @@ export default function MatchRadarAnimation() {
     const angleStep = (Math.PI * 2) / axisLabels.length;
     return axisLabels.map((label, i) => {
       const angle = -Math.PI / 2 + i * angleStep;
-      const r = radius + (performanceMode ? 3 : 24);
+      const r = radius + (performanceMode ? 2 : 24);
       const x = center + r * Math.cos(angle);
       const y = center + r * Math.sin(angle);
       const cos = Math.cos(angle);
@@ -194,12 +194,12 @@ export default function MatchRadarAnimation() {
       let dy = 2;
       if (cos > 0.25) {
         textAnchor = 'start';
-        dx = 5;
+        dx = 4;
       } else if (cos < -0.25) {
         textAnchor = 'end';
-        dx = -5;
+        dx = -4;
       }
-      if (sin > 0.25) dy = 8;
+      if (sin > 0.25) dy = 7;
       if (sin < -0.25) dy = -4;
       return { label, x, y, textAnchor, dx, dy };
     });
@@ -296,7 +296,7 @@ export default function MatchRadarAnimation() {
             dominantBaseline="middle"
             fill="rgba(255,255,255,0.86)"
               className="font-semibold uppercase"
-              style={{ fontSize: performanceMode ? '7px' : '12px', letterSpacing: performanceMode ? '0.09em' : '0.18em' }}
+              style={{ fontSize: performanceMode ? '6.6px' : '12px', letterSpacing: performanceMode ? '0.08em' : '0.18em' }}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.68 + pos.dx * 0.02, duration: 0.6 }}
