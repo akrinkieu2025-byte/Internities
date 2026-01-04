@@ -52,28 +52,28 @@ export default function HeroSection({ onTryDemo, onPartner, parallaxStyle = {} }
 
         <div className="lg:col-span-6">
           <Reveal delay={0.12}>
-            <motion.div
-              className="relative h-[440px] w-full transform-gpu will-change-transform"
-              style={parallaxStyle}
-            >
-              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-brand-darker via-brand-dark to-brand-darker border border-white/5 shadow-glow-lg overflow-visible">
-                <div className="absolute inset-0 opacity-60" style={{ backgroundImage: 'radial-gradient(circle at 25% 25%, rgba(6,182,212,0.25), transparent 55%)' }} />
-                <div className="absolute inset-0 opacity-40" style={{ backgroundImage: 'radial-gradient(circle at 70% 70%, rgba(124,58,237,0.18), transparent 55%)' }} />
-                <div className="relative h-full w-full flex items-center justify-center">
-                  <motion.div
-                    className="relative w-[360px] h-[360px]"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-                  >
-                    <MatchRadarAnimation />
-                  </motion.div>
+              <motion.div
+                className="relative h-[420px] sm:h-[440px] w-full transform-gpu will-change-transform px-3 sm:px-4"
+                style={parallaxStyle}
+              >
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-brand-darker via-brand-dark to-brand-darker border border-white/5 shadow-glow-lg overflow-hidden">
+                  <div className="absolute inset-0 opacity-60" style={{ backgroundImage: 'radial-gradient(circle at 25% 25%, rgba(6,182,212,0.25), transparent 55%)' }} />
+                  <div className="absolute inset-0 opacity-40" style={{ backgroundImage: 'radial-gradient(circle at 70% 70%, rgba(124,58,237,0.18), transparent 55%)' }} />
+                  <div className="relative h-full w-full flex items-center justify-center px-2 sm:px-6">
+                    <motion.div
+                      className="relative w-full max-w-[320px] sm:max-w-[360px] aspect-square"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <MatchRadarAnimation />
+                    </motion.div>
+                  </div>
+                  <div className="absolute bottom-4 left-0 right-0 text-center text-[11px] sm:text-xs text-brand-light/70 px-4">
+                    AI-led skill radar matching student and company profiles.
+                  </div>
                 </div>
-                <div className="absolute bottom-4 left-0 right-0 text-center text-xs text-brand-light/70">
-                  AI-led skill radar matching student and company profiles.
-                </div>
-              </div>
-            </motion.div>
+              </motion.div>
           </Reveal>
         </div>
       </div>
