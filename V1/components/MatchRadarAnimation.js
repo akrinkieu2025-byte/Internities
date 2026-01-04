@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { motion, useInView, useReducedMotion } from 'framer-motion';
+import { motion, useInView, useReducedMotion, AnimatePresence } from 'framer-motion';
 
 const axisLabels = ['Execution', 'Leadership', 'Strategy', 'Communication', 'Creativity', 'Ownership'];
 
@@ -86,7 +86,7 @@ export default function MatchRadarAnimation() {
   const animationEnabled = inView && !prefersReducedMotion;
 
   const size = performanceMode ? 160 : 400;
-  const padding = performanceMode ? 80 : 64;
+  const padding = performanceMode ? 50 : 64;
   const paddedSize = size + padding * 2;
   const center = paddedSize / 2;
   const radius = performanceMode ? 56 : 170;
@@ -209,8 +209,38 @@ export default function MatchRadarAnimation() {
   const showSampling = stage === 'sampling';
   const showFinal = stage === 'final';
 
+  let statusText = '';
+  let statusColor = 'text-slate-200';
+  
+  if (stage === 'student') {
+      statusText = '60% match';
+  } else if (showSampling) {
+      statusText = `Matching ${samplePercents[currentSample] || 20}%`;
+      statusColor = 'text-slate-300';
+  } else if (showFinal) {
+      statusText = "98% match • It's a match";
+      statusColor = 'text-emerald-400';
+  }
+
   return (
-    <div ref={containerRef} className="relative w-full max-w-[280px] sm:max-w-[340px] md:max-w-[360px] aspect-square overflow-visible mx-auto">
+    <div ref={containerRef} className="relative w-full max-w-[280px] sm:max-w-[340px] md:max-w-[360px] aspect-square overflow-visible mx-auto flex flex-col items-center justify-center">
+      
+      <div className="absolute top-4 left-0 right-0 text-center z-10 pointer-events-none">
+         <AnimatePresence mode="wait">
+            {statusText && (
+                <motion.div
+                    key={stage === 'sampling' ? 'sampling' : statusText}
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className={`text-xs sm:text-sm font-bold ${statusColor} drop-shadow-md`}
+                >
+                    {statusText}
+                </motion.div>
+            )}
+         </AnimatePresence>
+      </div>
+
       <svg
         viewBox={`0 0 ${paddedSize} ${paddedSize}`}
         className="absolute inset-0"
@@ -365,51 +395,6 @@ export default function MatchRadarAnimation() {
               transition={{ duration: 1.8 }}
             />
           </motion.g>
-        )}
-
-        {stage === 'student' && (
-          <motion.text
-            x={center}
-            y={center - 8}
-            textAnchor="middle"
-            fill="rgba(226,232,240,0.9)"
-            className="text-sm font-semibold"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3, duration: 0.6 }}
-          >
-            60% match
-          </motion.text>
-        )}
-
-        {showSampling && (
-          <motion.text
-            x={center}
-            y={center - 12}
-            textAnchor="middle"
-            fill="rgba(226,232,240,0.7)"
-            className="text-[11px] font-semibold"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.8 }}
-            transition={{ duration: 0.3 }}
-          >
-            Matching {samplePercents[currentSample] || 20}%
-          </motion.text>
-        )}
-
-        {showFinal && (
-          <motion.text
-            x={center}
-            y={center - 10}
-            textAnchor="middle"
-            fill="#4ade80"
-            className="text-sm font-semibold"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-          >
-            98% match • It&apos;s a match
-          </motion.text>
         )}
       </svg>
     </div>
