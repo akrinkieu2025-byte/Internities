@@ -85,11 +85,11 @@ export default function MatchRadarAnimation() {
   const performanceMode = isMobilePerf || prefersReducedMotion;
   const animationEnabled = inView && !prefersReducedMotion;
 
-  const size = performanceMode ? 260 : 400;
-  const padding = performanceMode ? 32 : 48;
+  const size = performanceMode ? 230 : 400;
+  const padding = performanceMode ? 28 : 48;
   const paddedSize = size + padding * 2;
   const center = paddedSize / 2;
-  const radius = performanceMode ? 122 : 170;
+  const radius = performanceMode ? 108 : 170;
   const gridLevels = performanceMode ? 3 : 5;
 
   const companyValues = useMemo(() => [0.9, 0.74, 0.86, 0.78, 0.82, 0.88], []);
@@ -184,7 +184,7 @@ export default function MatchRadarAnimation() {
     const angleStep = (Math.PI * 2) / axisLabels.length;
     return axisLabels.map((label, i) => {
       const angle = -Math.PI / 2 + i * angleStep;
-      const r = radius + (performanceMode ? 8 : 24);
+      const r = radius + (performanceMode ? 6 : 24);
       const x = center + r * Math.cos(angle);
       const y = center + r * Math.sin(angle);
       const cos = Math.cos(angle);
@@ -210,7 +210,7 @@ export default function MatchRadarAnimation() {
   const showFinal = stage === 'final';
 
   return (
-    <div ref={containerRef} className="relative w-full max-w-[320px] sm:max-w-[360px] md:max-w-[360px] aspect-square overflow-visible mx-auto">
+    <div ref={containerRef} className="relative w-full max-w-[280px] sm:max-w-[340px] md:max-w-[360px] aspect-square overflow-visible mx-auto">
       <svg
         viewBox={`0 0 ${paddedSize} ${paddedSize}`}
         className="absolute inset-0"
@@ -259,7 +259,7 @@ export default function MatchRadarAnimation() {
             r={r}
             fill="none"
             stroke="rgba(255,255,255,0.08)"
-            strokeWidth={idx === gridRings.length - 1 ? (performanceMode ? 1 : 1.2) : performanceMode ? 0.7 : 0.9}
+            strokeWidth={idx === gridRings.length - 1 ? (performanceMode ? 0.9 : 1.2) : performanceMode ? 0.6 : 0.9}
             initial={{ pathLength: 0, opacity: 0 }}
             animate={{ pathLength: 1, opacity: 1 }}
             transition={{ delay: 0.1 + idx * 0.08, duration: 0.8 }}
@@ -296,7 +296,7 @@ export default function MatchRadarAnimation() {
             dominantBaseline="middle"
             fill="rgba(255,255,255,0.86)"
               className="font-semibold uppercase"
-            style={{ fontSize: performanceMode ? '9px' : '12px', letterSpacing: performanceMode ? '0.14em' : '0.18em' }}
+            style={{ fontSize: performanceMode ? '8.5px' : '12px', letterSpacing: performanceMode ? '0.12em' : '0.18em' }}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.68 + pos.dx * 0.02, duration: 0.6 }}
