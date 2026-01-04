@@ -38,16 +38,16 @@ const problemCards = [
 
 const radarSteps = [
   'Students complete a guided questionnaire and upload documents like CVs, LinkedIn, or personal sites.',
-  'Companies create new roles through a questionnaire and can attach specs, scorecards, or decks.',
-  'An AI-driven skill engine builds the radar view for every student and every role.',
-  '“Skills required” diagrams from companies are matched to “skills available” diagrams from students to surface the best fit.',
+  'Companies describe their roles through a questionnaire and can attach specs, scorecards, or decks.',
+  'An AI-driven skill engine builds the Skill Radar for every student and every role.',
+  '“Skills required” diagrams from companies are matched to “skills available” diagrams from students to describe the best fit.',
 ];
 
 const studentBenefits = [
-  'Build your skill-based profile via a questionnaire and document uploads.',
-  'Receive curated internships that match your profile.',
-  'Showcase projects, competitions, and extracurriculars.',
-  'Gain transparency into why you fit a role.',
+  'Build a high-signal profile from targeted questions (CV optional) plus verification.',
+  'Only internship roles—filtered for quality and relevance, not endless listings.',
+  'Deadlines, timelines, and statuses—no spreadsheets, no chaos.',
+  'Internship-only platform with curated companies and verified students.',
 ];
 
 const companyBenefits = [
@@ -66,12 +66,13 @@ const missionLines = [
 const visionLines = [
   'A world where potential is measured by capability, not paperwork.',
   'Internship recruiting that feels curated for every participant.',
+  'A shared skill language that students and companies can trust.',
 ];
 
 const principles = [
-  { title: 'Fairness first', copy: 'Skill signals over polish, so potential is visible early.' },
-  { title: 'Signal over noise', copy: 'Structured inputs and explainable radars for clarity.' },
-  { title: 'Speed with quality', copy: 'Automation for throughput, human insight for trust.' },
+  { title: 'Built for outcomes', copy: 'Better matches and fewer mismatches—so internships become meaningful, not random.' },
+  { title: 'Clarity you can trust', copy: 'Transparent requirements and skill signals so decisions feel cleaner and faster.' },
+  { title: 'Speed with quality', copy: 'Automation for throughput, human insight for trust so teams move faster without sacrificing standards.' },
 ];
 
 const stageItems = [
@@ -132,7 +133,7 @@ const valueContent = {
     callout: {
       title: 'Shortlist pipeline',
       headline: 'Faster screening',
-      copy: 'Receive ranked shortlists with explainable fit, so teams spend time interviewing—not sifting.',
+        copy: 'Receive ranked shortlists with explainable fit, so teams spend time interviewing, not sifting.',
     },
   },
 };

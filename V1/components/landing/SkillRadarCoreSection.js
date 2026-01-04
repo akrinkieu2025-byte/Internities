@@ -12,7 +12,7 @@ export default function SkillRadarCoreSection({ steps }) {
           <SectionHeader
             eyebrow="The Skill Radar"
             title="The core of Internities is a skill-first radar."
-            description="Clear, comparable skill profiles for students and roles—built from questionnaires, documents, and mentor insight."
+            description="Clear, comparable skill profiles for students and roles, built from questionnaires, documents, and mentor insight."
             align="left"
           />
           <div className="space-y-5">
@@ -37,7 +37,7 @@ export default function SkillRadarCoreSection({ steps }) {
               <div className="grid md:grid-cols-2 gap-6 relative">
                 <div className="space-y-3">
                   <h3 className="text-lg font-semibold text-brand-light">Workflow clarity</h3>
-                  <p className="text-brand-light/70">Guided inputs build comparable radars for roles and candidates, making fit obvious.</p>
+                  <p className="text-brand-light/70">Guided inputs build comparable radars for roles and candidates, establishing the perfect fit.</p>
                 </div>
                 <div className="space-y-3">
                   <h3 className="text-lg font-semibold text-brand-light">Explainable matching</h3>

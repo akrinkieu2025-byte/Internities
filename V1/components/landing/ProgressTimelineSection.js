@@ -19,7 +19,7 @@ export default function ProgressTimelineSection({ items }) {
         <SectionHeader
           eyebrow="Progress"
           title="Where we are today."
-          description="A transparent view of the roadmap—no vanity metrics, just clear milestones."
+          description="A transparent view of the roadmap: no vanity metrics, just clear milestones."
         />
         <div className="relative">
           <motion.div

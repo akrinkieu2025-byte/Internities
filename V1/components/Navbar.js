@@ -49,7 +49,7 @@ export default function Navbar({ onTryDemoClick = () => {} }) {
               href="/"
               className="text-3xl font-bold tracking-tight hover:scale-105 transition-transform duration-300"
             >
-              <span className="gradient-text-purple">Internities</span>
+              <span className="gradient-text-purple">Internities.</span>
             </Link>
           </div>
 

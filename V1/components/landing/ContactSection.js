@@ -6,8 +6,8 @@ import SectionHeader from './SectionHeader';
 
 export default function ContactSection() {
   return (
-    <section className="px-6 sm:px-8 lg:px-12 py-20" id="contact">
-      <div className="max-w-6xl mx-auto space-y-10">
+    <section className="px-6 sm:px-8 lg:px-12 py-20 lg:py-24 min-h-[65vh] lg:min-h-[60vh] flex items-center" id="contact">
+      <div className="max-w-6xl mx-auto w-full space-y-10">
         <SectionHeader
           eyebrow="Contact"
           title="Ready to partner?"
