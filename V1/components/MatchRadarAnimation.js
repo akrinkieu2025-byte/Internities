@@ -1,15 +1,9 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { motion, useInView, useReducedMotion } from 'framer-motion';
 
 const axisLabels = ['Execution', 'Leadership', 'Strategy', 'Communication', 'Creativity', 'Ownership'];
-const size = 400;
-const padding = 48;
-const paddedSize = size + padding * 2;
-const center = paddedSize / 2;
-const radius = 170;
-const gridLevels = 5;
 
 function seededRng(seed = 17) {
   let value = seed % 2147483647;
@@ -32,7 +26,7 @@ function polarPoint(value01, angle, r, c) {
   };
 }
 
-function valuesToPoints(values) {
+function valuesToPoints(values, radius, center) {
   const step = (Math.PI * 2) / axisLabels.length;
   return values.map((value, idx) => {
     const angle = -Math.PI / 2 + idx * step;
@@ -55,46 +49,85 @@ function buildSamples(count = 100) {
   });
 }
 
-function buildDurations(count = 100) {
+function buildDurations(count = 100, slow = false) {
   const durations = [];
   for (let i = 0; i < count; i += 1) {
-    if (i < 10) durations.push(220);
-    else if (i < 40) durations.push(120);
-    else durations.push(50);
+    if (i < 10) durations.push(slow ? 260 : 220);
+    else if (i < 40) durations.push(slow ? 150 : 120);
+    else durations.push(slow ? 70 : 50);
   }
   return durations;
 }
 
 export default function MatchRadarAnimation() {
   const prefersReducedMotion = useReducedMotion();
+  const containerRef = useRef(null);
+  const inView = useInView(containerRef, { amount: 0.35, margin: '-10% 0px' });
   const [stage, setStage] = useState('company');
   const [currentSample, setCurrentSample] = useState(0);
   const [runId, setRunId] = useState(0);
+  const [isMobilePerf, setIsMobilePerf] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const mqNarrow = window.matchMedia('(max-width: 767px)');
+    const mqCoarse = window.matchMedia('(pointer: coarse)');
+    const update = () => setIsMobilePerf(mqNarrow.matches || mqCoarse.matches);
+    update();
+    mqNarrow.addEventListener('change', update);
+    mqCoarse.addEventListener('change', update);
+    return () => {
+      mqNarrow.removeEventListener('change', update);
+      mqCoarse.removeEventListener('change', update);
+    };
+  }, []);
+
+  const performanceMode = isMobilePerf || prefersReducedMotion;
+  const animationEnabled = inView && !prefersReducedMotion;
+
+  const size = performanceMode ? 320 : 400;
+  const padding = performanceMode ? 40 : 48;
+  const paddedSize = size + padding * 2;
+  const center = paddedSize / 2;
+  const radius = performanceMode ? 150 : 170;
+  const gridLevels = performanceMode ? 3 : 5;
 
   const companyValues = useMemo(() => [0.9, 0.74, 0.86, 0.78, 0.82, 0.88], []);
   const studentValues = useMemo(() => [0.62, 0.58, 0.65, 0.63, 0.6, 0.68], []);
   const finalValues = useMemo(() => [0.95, 0.82, 0.9, 0.86, 0.88, 0.92], []);
 
-  const sampleValues = useMemo(() => (prefersReducedMotion ? [] : buildSamples(100)), [prefersReducedMotion]);
-  const sampleDurations = useMemo(() => (prefersReducedMotion ? [] : buildDurations(sampleValues.length)), [prefersReducedMotion, sampleValues.length]);
+  const sampleValues = useMemo(() => (prefersReducedMotion ? [] : buildSamples(performanceMode ? 36 : 100)), [prefersReducedMotion, performanceMode]);
+  const sampleDurations = useMemo(
+    () => (prefersReducedMotion ? [] : buildDurations(sampleValues.length, performanceMode)),
+    [prefersReducedMotion, performanceMode, sampleValues.length]
+  );
   const samplePercents = useMemo(() => {
     if (prefersReducedMotion) return [];
     const rand = seededRng(1337);
     return Array.from({ length: sampleValues.length }, () => Math.round(20 + rand() * 70));
   }, [prefersReducedMotion, sampleValues.length]);
 
-  const companyPolygon = useMemo(() => pointsToString(valuesToPoints(companyValues)), [companyValues]);
-  const studentPolygon = useMemo(() => pointsToString(valuesToPoints(studentValues)), [studentValues]);
-  const finalPolygon = useMemo(() => pointsToString(valuesToPoints(finalValues)), [finalValues]);
-  const samplePolygons = useMemo(() => sampleValues.map((vals) => pointsToString(valuesToPoints(vals))), [sampleValues]);
+  const companyPolygon = useMemo(() => pointsToString(valuesToPoints(companyValues, radius, center)), [companyValues, center, radius]);
+  const studentPolygon = useMemo(() => pointsToString(valuesToPoints(studentValues, radius, center)), [studentValues, center, radius]);
+  const finalPolygon = useMemo(() => pointsToString(valuesToPoints(finalValues, radius, center)), [finalValues, center, radius]);
+  const samplePolygons = useMemo(
+    () => sampleValues.map((vals) => pointsToString(valuesToPoints(vals, radius, center))),
+    [sampleValues, center, radius]
+  );
 
   useEffect(() => {
+    if (!animationEnabled && !prefersReducedMotion) {
+      setStage('company');
+      setCurrentSample(0);
+      return () => {};
+    }
+
     const timers = [];
     setStage('company');
     setCurrentSample(0);
 
-    const companyDuration = 3200;
-    const studentDuration = 1600;
+    const companyDuration = performanceMode ? 2600 : 3200;
+    const studentDuration = performanceMode ? 1400 : 1600;
 
     if (prefersReducedMotion) {
       timers.push(setTimeout(() => setStage('final'), 1400));
@@ -104,10 +137,10 @@ export default function MatchRadarAnimation() {
     }
 
     return () => timers.forEach(clearTimeout);
-  }, [prefersReducedMotion, runId]);
+  }, [animationEnabled, prefersReducedMotion, runId, performanceMode]);
 
   useEffect(() => {
-    if (prefersReducedMotion || stage !== 'sampling') return () => {};
+    if (prefersReducedMotion || stage !== 'sampling' || !animationEnabled) return () => {};
 
     let cancelled = false;
     let idx = 0;
@@ -136,16 +169,16 @@ export default function MatchRadarAnimation() {
       cancelled = true;
       timeouts.forEach(clearTimeout);
     };
-  }, [prefersReducedMotion, sampleDurations, samplePolygons.length, stage, runId]);
+  }, [prefersReducedMotion, sampleDurations, samplePolygons.length, stage, runId, animationEnabled]);
 
   useEffect(() => {
-    if (stage !== 'final') return () => {};
+    if (stage !== 'final' || !animationEnabled) return () => {};
     const hold = prefersReducedMotion ? 1800 : 2200;
     const t = setTimeout(() => setRunId((id) => id + 1), hold);
     return () => clearTimeout(t);
-  }, [prefersReducedMotion, stage]);
+  }, [prefersReducedMotion, stage, animationEnabled]);
 
-  const gridRings = useMemo(() => Array.from({ length: gridLevels }, (_, i) => ((i + 1) / gridLevels) * radius), []);
+  const gridRings = useMemo(() => Array.from({ length: gridLevels }, (_, i) => ((i + 1) / gridLevels) * radius), [gridLevels, radius]);
 
   const axisLabelPositions = useMemo(() => {
     const angleStep = (Math.PI * 2) / axisLabels.length;
@@ -170,14 +203,14 @@ export default function MatchRadarAnimation() {
       if (sin < -0.25) dy = -6;
       return { label, x, y, textAnchor, dx, dy };
     });
-  }, []);
+  }, [radius, center]);
 
   const showStudent = stage === 'student' || stage === 'sampling' || stage === 'final';
   const showSampling = stage === 'sampling';
   const showFinal = stage === 'final';
 
   return (
-    <div className="relative w-[360px] h-[360px] overflow-visible">
+    <div ref={containerRef} className="relative w-[260px] h-[260px] sm:w-[320px] sm:h-[320px] md:w-[360px] md:h-[360px] overflow-visible">
       <svg
         viewBox={`0 0 ${paddedSize} ${paddedSize}`}
         className="absolute inset-0"
@@ -200,7 +233,7 @@ export default function MatchRadarAnimation() {
             height={paddedSize + padding * 6}
             filterUnits="userSpaceOnUse"
           >
-            <feGaussianBlur stdDeviation="12" result="blur" />
+            <feGaussianBlur stdDeviation={performanceMode ? 6 : 12} result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
               <feMergeNode in="SourceGraphic" />
@@ -276,7 +309,7 @@ export default function MatchRadarAnimation() {
           stroke="rgba(59,130,246,0.9)"
           strokeWidth="2.2"
           fill="rgba(59,130,246,0.16)"
-          filter="url(#softGlow)"
+          filter={performanceMode ? undefined : 'url(#softGlow)'}
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.9, duration: 1.4, ease: 'easeOut' }}
@@ -318,7 +351,7 @@ export default function MatchRadarAnimation() {
               stroke="rgba(74,222,128,0.95)"
               strokeWidth="2.6"
               fill="url(#matchGlow)"
-              filter="url(#softGlow)"
+              filter={performanceMode ? undefined : 'url(#softGlow)'}
             />
             <motion.circle
               cx={center}

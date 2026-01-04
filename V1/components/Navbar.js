@@ -40,14 +40,17 @@ export default function Navbar({ onTryDemoClick = () => {} }) {
   };
 
   return (
-    <nav className="fixed top-0 w-full z-50 backdrop-blur-md bg-gradient-to-b from-brand-dark/80 to-brand-dark/20 border-b border-brand-primary/10">
+    <nav
+      className="fixed top-0 w-full z-50 backdrop-blur-md bg-gradient-to-b from-brand-dark/80 to-brand-dark/20 border-b border-brand-primary/10 transform-gpu will-change-transform backface-hidden isolate"
+      style={{ contain: 'layout paint' }}
+    >
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
         <div className="grid grid-cols-3 items-center h-20">
           {/* Logo left */}
           <div className="flex items-center">
             <Link
               href="/"
-              className="text-3xl font-bold tracking-tight hover:scale-105 transition-transform duration-300"
+              className="text-3xl font-bold tracking-tight hover:scale-105 transition-transform duration-300 will-change-transform"
             >
               <span className="gradient-text-purple">Internities.</span>
             </Link>
@@ -89,7 +92,7 @@ export default function Navbar({ onTryDemoClick = () => {} }) {
             {isLanding && (
               <button
                 onClick={onTryDemoClick}
-                className="btn-premium neon-border px-6 py-2.5 rounded-lg text-brand-light text-sm font-semibold shadow-glow-blue hover:shadow-glow-lg transition-all duration-300"
+                className="btn-premium neon-border px-6 py-2.5 rounded-lg text-brand-light text-sm font-semibold shadow-glow-blue hover:shadow-glow-lg transition-[transform,box-shadow] duration-300 will-change-transform"
               >
                 Try demo
               </button>

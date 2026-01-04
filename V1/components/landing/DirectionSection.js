@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useId } from 'react';
+import React, { useEffect, useMemo, useState, useId } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import Reveal from '../motion/Reveal';
 import SectionHeader from './SectionHeader';
@@ -68,14 +68,14 @@ function SignalNode({ active, animateSweep }) {
   );
 }
 
-function TimelinePill({ text, index, side, hoveredIndex, onHover, prefersReducedMotion }) {
+function TimelinePill({ text, index, side, hoveredIndex, onHover, prefersReducedMotion, isTouch }) {
   const isActive = hoveredIndex === index;
   const isLeft = side === 'left';
 
   return (
     <motion.li
       variants={pillVariants}
-      whileHover={{ y: -3, boxShadow: '0 18px 50px rgba(109,255,222,0.14)' }}
+      whileHover={isTouch ? undefined : { y: -3, boxShadow: '0 18px 50px rgba(109,255,222,0.14)' }}
       whileTap={{ scale: 0.99 }}
       className="list-none"
     >
@@ -85,7 +85,7 @@ function TimelinePill({ text, index, side, hoveredIndex, onHover, prefersReduced
         onMouseLeave={() => onHover(null)}
         onFocus={() => onHover(index)}
         onBlur={() => onHover(null)}
-        className={`group relative w-full text-left rounded-2xl border px-4 py-3 transition-all duration-200 backdrop-blur-md ${
+        className={`group relative w-full text-left rounded-2xl border px-4 py-3.5 transition-all duration-200 backdrop-blur-md ${
           isActive ? 'border-brand-accent/60 bg-brand-accent/10' : 'border-white/10 bg-white/[0.04]'
         } shadow-[0_12px_40px_rgba(0,0,0,0.28)]`}
       >
@@ -102,7 +102,7 @@ function TimelinePill({ text, index, side, hoveredIndex, onHover, prefersReduced
   );
 }
 
-function TimelineCard({ title, heading, badge, items, side, hoveredIndex, onHover, prefersReducedMotion }) {
+function TimelineCard({ title, heading, badge, items, side, hoveredIndex, onHover, prefersReducedMotion, isTouch }) {
   return (
     <Reveal>
       <motion.div
@@ -110,8 +110,8 @@ function TimelineCard({ title, heading, badge, items, side, hoveredIndex, onHove
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.35 }}
-        className="relative h-full rounded-3xl border border-white/10 bg-white/[0.05] backdrop-blur-xl p-6 shadow-[0_18px_65px_rgba(0,0,0,0.32)] overflow-hidden flex flex-col min-h-[420px]"
-        whileHover={{ boxShadow: '0 24px 75px rgba(109,255,222,0.2)' }}
+        className="relative h-full rounded-3xl border border-white/10 bg-white/[0.05] backdrop-blur-xl p-6 shadow-[0_18px_65px_rgba(0,0,0,0.32)] overflow-hidden flex flex-col md:min-h-[420px] min-h-[360px] pl-12 md:pl-6"
+        whileHover={isTouch ? undefined : { boxShadow: '0 24px 75px rgba(109,255,222,0.2)' }}
         transition={{ duration: 0.3 }}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-brand-accent/10 via-transparent to-brand-secondary/10" aria-hidden />
@@ -121,7 +121,7 @@ function TimelineCard({ title, heading, badge, items, side, hoveredIndex, onHove
             {badge}
           </span>
         </div>
-        <h3 className="relative text-2xl font-semibold text-brand-light mb-4">{heading}</h3>
+        <h3 className="relative text-2xl font-semibold text-brand-light mb-4 leading-snug">{heading}</h3>
         <ul className="relative grid grid-rows-3 gap-4 flex-1">
           {items.map((line, idx) => (
             <TimelinePill
@@ -132,6 +132,7 @@ function TimelineCard({ title, heading, badge, items, side, hoveredIndex, onHove
               hoveredIndex={hoveredIndex}
               onHover={onHover}
               prefersReducedMotion={prefersReducedMotion}
+              isTouch={isTouch}
             />
           ))}
         </ul>
@@ -178,8 +179,8 @@ function SignalSpineDesktop({ hoveredIndex, onHover, prefersReducedMotion }) {
 function SignalSpineMobile({ count, hoveredIndex, onHover, prefersReducedMotion }) {
   const nodes = useMemo(() => Array.from({ length: count }, (_, i) => i), [count]);
   return (
-    <div className="md:hidden absolute left-5 top-0 bottom-0 flex flex-col justify-between pointer-events-none" aria-hidden>
-      <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-brand-accent/15 via-brand-accent/40 to-brand-accent/15" />
+    <div className="md:hidden absolute left-3 sm:left-4 top-2 bottom-2 flex flex-col justify-between pointer-events-none" aria-hidden>
+      <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-brand-accent/18 via-brand-accent/40 to-brand-accent/18" />
       {nodes.map((idx) => {
         const active = hoveredIndex === idx % 3; // highlight matching row grouping
         return (
@@ -189,7 +190,12 @@ function SignalSpineMobile({ count, hoveredIndex, onHover, prefersReducedMotion 
                 active ? 'from-brand-accent/60 to-transparent' : 'from-brand-accent/25 to-transparent'
               }`}
             />
-            <div className="relative pointer-events-auto" onMouseEnter={() => onHover(idx % 3)} onMouseLeave={() => onHover(null)}>
+            <div
+              className="relative pointer-events-auto"
+              onMouseEnter={() => onHover(idx % 3)}
+              onMouseLeave={() => onHover(null)}
+              onClick={() => onHover(active ? null : idx % 3)}
+            >
               <SignalNode active={active} animateSweep={!prefersReducedMotion && active} />
             </div>
           </div>
@@ -202,9 +208,19 @@ function SignalSpineMobile({ count, hoveredIndex, onHover, prefersReducedMotion 
 export default function DirectionSection({ mission, vision, principles }) {
   const prefersReducedMotion = useReducedMotion();
   const [hoveredIndex, setHoveredIndex] = useState(null);
+  const [isTouch, setIsTouch] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const mq = window.matchMedia('(pointer: coarse)');
+    const update = () => setIsTouch(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   return (
-    <section className="px-6 sm:px-8 lg:px-12 py-20" id="mission">
+    <section className="px-6 sm:px-8 lg:px-12 py-20 overflow-hidden" id="mission">
       <div className="max-w-6xl mx-auto space-y-10">
         <SectionHeader
           eyebrow="Direction"
@@ -213,7 +229,7 @@ export default function DirectionSection({ mission, vision, principles }) {
         />
 
         <motion.div
-          className="relative grid md:grid-cols-[1fr_auto_1fr] gap-6 items-stretch"
+          className="relative flex flex-col gap-6 md:grid md:grid-cols-[1fr_auto_1fr] items-stretch pl-5 sm:pl-6 md:pl-0"
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.25 }}
@@ -234,6 +250,7 @@ export default function DirectionSection({ mission, vision, principles }) {
             hoveredIndex={hoveredIndex}
             onHover={setHoveredIndex}
             prefersReducedMotion={prefersReducedMotion}
+            isTouch={isTouch}
           />
 
           <SignalSpineDesktop
@@ -251,6 +268,7 @@ export default function DirectionSection({ mission, vision, principles }) {
             hoveredIndex={hoveredIndex}
             onHover={setHoveredIndex}
             prefersReducedMotion={prefersReducedMotion}
+            isTouch={isTouch}
           />
         </motion.div>
 

@@ -201,12 +201,17 @@ export default function Home() {
       <Navbar onTryDemoClick={handleOpenDemo} />
 
       <div className="relative">
-        <div className="fixed inset-0 pointer-events-none opacity-60" aria-hidden>
-          <div className="absolute -top-32 -left-16 w-96 h-96 bg-brand-accent/10 blur-[120px]" />
-          <div className="absolute bottom-0 right-0 w-[540px] h-[540px] bg-brand-secondary/10 blur-[140px]" />
-        </div>
+        <div
+          className="fixed inset-0 pointer-events-none opacity-70 mix-blend-screen" aria-hidden
+          style={{
+            backgroundImage: 'radial-gradient(circle at 15% 18%, rgba(14, 165, 233, 0.18), transparent 55%), radial-gradient(circle at 82% 78%, rgba(124, 58, 237, 0.16), transparent 60%)',
+            backgroundRepeat: 'no-repeat',
+            backgroundSize: '120% 120%',
+            transform: 'translateZ(0)'
+          }}
+        />
 
-        <div ref={heroRef} className="space-y-16 lg:space-y-20 relative z-10">
+        <div ref={heroRef} className="space-y-16 lg:space-y-20 relative z-10 will-change-transform transform-gpu">
           <HeroSection
             onTryDemo={handleOpenDemo}
             onPartner={() => document?.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}

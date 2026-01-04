@@ -14,15 +14,26 @@ html {
 
 body {
   background-color: #020617;
-  background-image: 
-    radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(120, 58, 237, 0.08) 0%, transparent 50%),
-    radial-gradient(circle at 40% 0%, rgba(6, 182, 212, 0.05) 0%, transparent 50%);
-  background-attachment: fixed;
   color: #e2e8f0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: 
+    radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(120, 58, 237, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 40% 0%, rgba(6, 182, 212, 0.05) 0%, transparent 50%);
+  background-repeat: no-repeat;
+  background-size: 140% 140%;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 a {
@@ -44,7 +55,7 @@ button {
 .glass-card:hover {
   background: rgba(30, 41, 59, 0.5);
   border-color: rgba(59, 130, 246, 0.3);
-  transition: all 0.3s ease;
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 /* Gradient Text */
@@ -73,7 +84,7 @@ button {
 
 .neon-border:hover {
   box-shadow: 0 0 20px rgba(59, 130, 246, 0.4), inset 0 0 20px rgba(59, 130, 246, 0.1);
-  transition: all 0.3s ease;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 /* Premium Button Base */
@@ -81,7 +92,7 @@ button {
   position: relative;
   font-weight: 600;
   letter-spacing: 0.5px;
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease;
   overflow: hidden;
 }
 

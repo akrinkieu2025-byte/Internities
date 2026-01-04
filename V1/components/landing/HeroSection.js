@@ -7,9 +7,9 @@ import MatchRadarAnimation from '../MatchRadarAnimation';
 
 const valueChips = ['Skill-based matching', 'Faster screening'];
 
-export default function HeroSection({ onTryDemo, onPartner, parallaxStyle }) {
+export default function HeroSection({ onTryDemo, onPartner, parallaxStyle = {} }) {
   return (
-    <section className="min-h-[92vh] px-6 sm:px-8 lg:px-12 pt-28 pb-16 sm:pt-28 md:pt-32 md:pb-20 lg:pt-36 lg:pb-24 flex items-center" id="hero">
+    <section className="min-h-[92vh] px-6 sm:px-8 lg:px-12 pt-28 pb-16 sm:pt-28 md:pt-32 md:pb-20 lg:pt-36 lg:pb-24 flex items-center overflow-hidden" id="hero">
       <div className="max-w-7xl mx-auto grid lg:grid-cols-12 gap-12 items-center">
         <div className="lg:col-span-6 space-y-6">
           <Reveal>
@@ -52,8 +52,8 @@ export default function HeroSection({ onTryDemo, onPartner, parallaxStyle }) {
 
         <div className="lg:col-span-6">
           <Reveal delay={0.12}>
-            <div
-              className="relative h-[440px] w-full"
+            <motion.div
+              className="relative h-[440px] w-full transform-gpu will-change-transform"
               style={parallaxStyle}
             >
               <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-brand-darker via-brand-dark to-brand-darker border border-white/5 shadow-glow-lg overflow-visible">
@@ -73,7 +73,7 @@ export default function HeroSection({ onTryDemo, onPartner, parallaxStyle }) {
                   AI-led skill radar matching student and company profiles.
                 </div>
               </div>
-            </div>
+            </motion.div>
           </Reveal>
         </div>
       </div>
