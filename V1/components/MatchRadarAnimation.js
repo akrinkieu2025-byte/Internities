@@ -85,11 +85,11 @@ export default function MatchRadarAnimation() {
   const performanceMode = isMobilePerf || prefersReducedMotion;
   const animationEnabled = inView && !prefersReducedMotion;
 
-  const size = performanceMode ? 230 : 400;
-  const padding = performanceMode ? 28 : 48;
+  const size = performanceMode ? 200 : 400;
+  const padding = performanceMode ? 22 : 48;
   const paddedSize = size + padding * 2;
   const center = paddedSize / 2;
-  const radius = performanceMode ? 108 : 170;
+  const radius = performanceMode ? 92 : 170;
   const gridLevels = performanceMode ? 3 : 5;
 
   const companyValues = useMemo(() => [0.9, 0.74, 0.86, 0.78, 0.82, 0.88], []);
@@ -184,23 +184,23 @@ export default function MatchRadarAnimation() {
     const angleStep = (Math.PI * 2) / axisLabels.length;
     return axisLabels.map((label, i) => {
       const angle = -Math.PI / 2 + i * angleStep;
-      const r = radius + (performanceMode ? 6 : 24);
+      const r = radius + (performanceMode ? 4 : 24);
       const x = center + r * Math.cos(angle);
       const y = center + r * Math.sin(angle);
       const cos = Math.cos(angle);
       const sin = Math.sin(angle);
       let textAnchor = 'middle';
       let dx = 0;
-      let dy = 4;
+      let dy = 2;
       if (cos > 0.25) {
         textAnchor = 'start';
-        dx = 8;
+        dx = 6;
       } else if (cos < -0.25) {
         textAnchor = 'end';
-        dx = -8;
+        dx = -6;
       }
-      if (sin > 0.25) dy = 12;
-      if (sin < -0.25) dy = -6;
+      if (sin > 0.25) dy = 9;
+      if (sin < -0.25) dy = -5;
       return { label, x, y, textAnchor, dx, dy };
     });
   }, [radius, center, performanceMode]);
@@ -296,7 +296,7 @@ export default function MatchRadarAnimation() {
             dominantBaseline="middle"
             fill="rgba(255,255,255,0.86)"
               className="font-semibold uppercase"
-            style={{ fontSize: performanceMode ? '8.5px' : '12px', letterSpacing: performanceMode ? '0.12em' : '0.18em' }}
+              style={{ fontSize: performanceMode ? '7.6px' : '12px', letterSpacing: performanceMode ? '0.1em' : '0.18em' }}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.68 + pos.dx * 0.02, duration: 0.6 }}
