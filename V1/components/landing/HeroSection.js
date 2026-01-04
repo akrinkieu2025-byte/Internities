@@ -19,7 +19,7 @@ export default function HeroSection({ onTryDemo, onPartner, parallaxStyle }) {
           </Reveal>
           <Reveal delay={0.05}>
             <h1 className="text-4xl sm:text-6xl font-black leading-tight text-brand-light">
-              Match exceptional students with companies that move fast.
+              Connect potential with possibilities.
             </h1>
           </Reveal>
           <Reveal delay={0.1}>
