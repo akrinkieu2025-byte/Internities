@@ -42,10 +42,10 @@ export default function Navbar({ onTryDemoClick = () => {} }) {
   return (
     <nav
       className="fixed top-0 w-full z-50 backdrop-blur-md bg-gradient-to-b from-brand-dark/80 to-brand-dark/20 border-b border-brand-primary/10 transform-gpu will-change-transform backface-hidden isolate"
-      style={{ contain: 'layout paint' }}
+      style={{ contain: 'layout paint', paddingTop: 'env(safe-area-inset-top, 0px)' }}
     >
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
-        <div className="grid grid-cols-3 items-center h-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+        <div className="hidden md:grid grid-cols-3 items-center h-20">
           {/* Logo left */}
           <div className="flex items-center">
             <Link
@@ -96,6 +96,34 @@ export default function Navbar({ onTryDemoClick = () => {} }) {
               >
                 Try demo
               </button>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile header */}
+        <div className="md:hidden flex items-center justify-between h-[68px] gap-3">
+          <Link
+            href="/"
+            className="text-2xl font-bold tracking-tight whitespace-nowrap"
+          >
+            <span className="gradient-text-purple">Internities.</span>
+          </Link>
+
+          <div className="flex items-center gap-3">
+            {isLanding ? (
+              <button
+                onClick={onTryDemoClick}
+                className="btn-premium neon-border px-4 py-2 rounded-lg text-brand-light text-xs font-semibold shadow-glow-blue hover:shadow-glow-lg transition-[transform,box-shadow] duration-300 will-change-transform whitespace-nowrap min-h-[44px]"
+              >
+                Try demo
+              </button>
+            ) : !hideHomeLink && (
+              <Link
+                href="/"
+                className="text-brand-light/80 text-sm font-medium whitespace-nowrap"
+              >
+                Home
+              </Link>
             )}
           </div>
         </div>

@@ -85,11 +85,11 @@ export default function MatchRadarAnimation() {
   const performanceMode = isMobilePerf || prefersReducedMotion;
   const animationEnabled = inView && !prefersReducedMotion;
 
-  const size = performanceMode ? 320 : 400;
-  const padding = performanceMode ? 40 : 48;
+  const size = performanceMode ? 300 : 400;
+  const padding = performanceMode ? 36 : 48;
   const paddedSize = size + padding * 2;
   const center = paddedSize / 2;
-  const radius = performanceMode ? 150 : 170;
+  const radius = performanceMode ? 140 : 170;
   const gridLevels = performanceMode ? 3 : 5;
 
   const companyValues = useMemo(() => [0.9, 0.74, 0.86, 0.78, 0.82, 0.88], []);
@@ -184,7 +184,7 @@ export default function MatchRadarAnimation() {
     const angleStep = (Math.PI * 2) / axisLabels.length;
     return axisLabels.map((label, i) => {
       const angle = -Math.PI / 2 + i * angleStep;
-      const r = radius + 24;
+      const r = radius + (performanceMode ? 12 : 24);
       const x = center + r * Math.cos(angle);
       const y = center + r * Math.sin(angle);
       const cos = Math.cos(angle);
@@ -203,14 +203,14 @@ export default function MatchRadarAnimation() {
       if (sin < -0.25) dy = -6;
       return { label, x, y, textAnchor, dx, dy };
     });
-  }, [radius, center]);
+  }, [radius, center, performanceMode]);
 
   const showStudent = stage === 'student' || stage === 'sampling' || stage === 'final';
   const showSampling = stage === 'sampling';
   const showFinal = stage === 'final';
 
   return (
-    <div ref={containerRef} className="relative w-[260px] h-[260px] sm:w-[320px] sm:h-[320px] md:w-[360px] md:h-[360px] overflow-visible">
+    <div ref={containerRef} className="relative w-full max-w-[340px] sm:max-w-[360px] md:max-w-[360px] aspect-square overflow-visible mx-auto">
       <svg
         viewBox={`0 0 ${paddedSize} ${paddedSize}`}
         className="absolute inset-0"
@@ -295,7 +295,8 @@ export default function MatchRadarAnimation() {
             dy={pos.dy}
             dominantBaseline="middle"
             fill="rgba(255,255,255,0.86)"
-            className="text-[12px] sm:text-sm font-semibold uppercase tracking-[0.2em]"
+            className="font-semibold uppercase tracking-[0.18em]"
+            style={{ fontSize: performanceMode ? '10px' : '12px' }}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.68 + pos.dx * 0.02, duration: 0.6 }}

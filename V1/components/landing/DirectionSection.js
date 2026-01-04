@@ -77,7 +77,7 @@ function TimelinePill({ text, index, side, hoveredIndex, onHover, prefersReduced
       variants={pillVariants}
       whileHover={isTouch ? undefined : { y: -3, boxShadow: '0 18px 50px rgba(109,255,222,0.14)' }}
       whileTap={{ scale: 0.99 }}
-      className="list-none"
+      className="list-none relative"
     >
       <button
         type="button"
@@ -89,6 +89,14 @@ function TimelinePill({ text, index, side, hoveredIndex, onHover, prefersReduced
           isActive ? 'border-brand-accent/60 bg-brand-accent/10' : 'border-white/10 bg-white/[0.04]'
         } shadow-[0_12px_40px_rgba(0,0,0,0.28)]`}
       >
+        <span
+          className="md:hidden absolute left-[-1.5rem] top-1/2 -translate-y-1/2 h-3 w-3 rounded-full border border-brand-accent/60 bg-brand-accent/20 shadow-[0_0_12px_rgba(109,255,222,0.35)]"
+          aria-hidden
+        />
+        <span
+          className="md:hidden absolute left-[-0.9rem] top-1/2 -translate-y-1/2 h-px w-4 bg-gradient-to-r from-brand-accent/60 to-transparent"
+          aria-hidden
+        />
         <span
           className={`absolute top-1/2 -translate-y-1/2 hidden md:block h-px w-10 ${
             isLeft ? 'right-[-2.6rem] bg-gradient-to-l from-brand-accent/60 to-transparent' : 'left-[-2.6rem] bg-gradient-to-r from-brand-accent/60 to-transparent'
@@ -122,7 +130,8 @@ function TimelineCard({ title, heading, badge, items, side, hoveredIndex, onHove
           </span>
         </div>
         <h3 className="relative text-2xl font-semibold text-brand-light mb-4 leading-snug">{heading}</h3>
-        <ul className="relative grid grid-rows-3 gap-4 flex-1">
+        <ul className="relative grid grid-rows-3 gap-4 flex-1 md:pl-0 pl-6">
+          <span className="md:hidden absolute left-[-1.5rem] top-2 bottom-2 w-px bg-gradient-to-b from-brand-accent/18 via-brand-accent/40 to-brand-accent/18" aria-hidden />
           {items.map((line, idx) => (
             <TimelinePill
               key={line}
@@ -176,35 +185,6 @@ function SignalSpineDesktop({ hoveredIndex, onHover, prefersReducedMotion }) {
   );
 }
 
-function SignalSpineMobile({ count, hoveredIndex, onHover, prefersReducedMotion }) {
-  const nodes = useMemo(() => Array.from({ length: count }, (_, i) => i), [count]);
-  return (
-    <div className="md:hidden absolute left-3 sm:left-4 top-2 bottom-2 flex flex-col justify-between pointer-events-none" aria-hidden>
-      <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-brand-accent/18 via-brand-accent/40 to-brand-accent/18" />
-      {nodes.map((idx) => {
-        const active = hoveredIndex === idx % 3; // highlight matching row grouping
-        return (
-          <div key={idx} className="relative flex items-center" style={{ flex: 1 }}>
-            <span
-              className={`absolute left-0 h-px w-10 bg-gradient-to-r ${
-                active ? 'from-brand-accent/60 to-transparent' : 'from-brand-accent/25 to-transparent'
-              }`}
-            />
-            <div
-              className="relative pointer-events-auto"
-              onMouseEnter={() => onHover(idx % 3)}
-              onMouseLeave={() => onHover(null)}
-              onClick={() => onHover(active ? null : idx % 3)}
-            >
-              <SignalNode active={active} animateSweep={!prefersReducedMotion && active} />
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 export default function DirectionSection({ mission, vision, principles }) {
   const prefersReducedMotion = useReducedMotion();
   const [hoveredIndex, setHoveredIndex] = useState(null);
@@ -229,18 +209,11 @@ export default function DirectionSection({ mission, vision, principles }) {
         />
 
         <motion.div
-          className="relative flex flex-col gap-6 md:grid md:grid-cols-[1fr_auto_1fr] items-stretch pl-5 sm:pl-6 md:pl-0"
+          className="relative flex flex-col gap-6 md:grid md:grid-cols-[1fr_auto_1fr] items-stretch pl-2 sm:pl-4 md:pl-0"
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.25 }}
         >
-          <SignalSpineMobile
-            count={mission.length + vision.length}
-            hoveredIndex={hoveredIndex}
-            onHover={setHoveredIndex}
-            prefersReducedMotion={prefersReducedMotion}
-          />
-
           <TimelineCard
             title="Mission"
             heading="Our mission."

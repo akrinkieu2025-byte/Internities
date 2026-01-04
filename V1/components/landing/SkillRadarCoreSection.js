@@ -3,6 +3,7 @@
 import React from 'react';
 import Reveal from '../motion/Reveal';
 import SectionHeader from './SectionHeader';
+import MatchRadarAnimation from '../MatchRadarAnimation';
 
 export default function SkillRadarCoreSection({ steps }) {
   return (
@@ -33,7 +34,12 @@ export default function SkillRadarCoreSection({ steps }) {
 
         <div className="lg:col-span-7">
           <Reveal variant="scaleIn">
-            <div className="glass-card rounded-3xl border border-white/10 p-8 relative overflow-hidden">
+            <div className="glass-card rounded-3xl border border-white/10 p-6 sm:p-7 md:p-8 relative overflow-hidden">
+              <div className="w-full max-w-[420px] mx-auto mb-6 md:mb-8">
+                <div className="relative w-full aspect-square overflow-hidden">
+                  <MatchRadarAnimation />
+                </div>
+              </div>
               <div className="grid md:grid-cols-2 gap-6 relative">
                 <div className="space-y-3">
                   <h3 className="text-lg font-semibold text-brand-light">Workflow clarity</h3>
