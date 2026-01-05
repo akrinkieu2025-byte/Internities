@@ -225,15 +225,15 @@ export default function MatchRadarAnimation() {
   return (
     <div ref={containerRef} className="relative w-full max-w-[280px] sm:max-w-[340px] md:max-w-[360px] aspect-square overflow-visible mx-auto flex flex-col items-center justify-center">
       
-      <div className="absolute top-4 left-0 right-0 text-center z-10 pointer-events-none">
+      <div className="absolute -top-8 sm:-top-3 left-0 right-0 text-center z-20 pointer-events-none flex justify-center">
          <AnimatePresence mode="wait">
             {statusText && (
                 <motion.div
                     key={stage === 'sampling' ? 'sampling' : statusText}
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className={`text-xs sm:text-sm font-bold ${statusColor} drop-shadow-md`}
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className={`px-4 py-1.5 rounded-full bg-slate-900/90 backdrop-blur-md border border-slate-700/50 text-xs sm:text-sm font-bold ${statusColor} shadow-xl ring-1 ring-white/10`}
                 >
                     {statusText}
                 </motion.div>
