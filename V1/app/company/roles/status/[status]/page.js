@@ -89,6 +89,15 @@ export default function RoleStatusPage() {
       <Navbar />
       <main className="min-h-screen bg-brand-dark text-white pt-24 pb-16 px-6">
         <div className="max-w-6xl mx-auto space-y-8">
+          <div className="flex justify-between items-center">
+            <Link
+              href="/company"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/15 text-sm text-brand-light hover:border-brand-primary hover:text-white"
+            >
+              ← Dashboard
+            </Link>
+          </div>
+
           <header className="glass-card rounded-3xl border border-white/15 p-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.5em] text-brand-light/50">Roles</p>

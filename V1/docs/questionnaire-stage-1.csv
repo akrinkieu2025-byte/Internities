@@ -1,0 +1,8 @@
+Questions:,Question Text ,Answer Input Type
+1,Must be currently enrolled in University,Yes/No
+2,Degree Level Accepted,Bachelor/Master/MBA/PhD
+3,Accepted progress of studies,Penultimate year/Graduated this year/3 years until Graduation/4 years until Graduation 
+4,Fields of study accepted ,"multi select + ""any"" option"
+5,minimum GPA to be further evaluated,percent slider 
+6,Academic Credit Required?,"Toggle (Yes/No) + ""University must sign internship agreement"" check box "
+7,Language Requirements,"""Applicant is Fluent in:"" + Multi Select "

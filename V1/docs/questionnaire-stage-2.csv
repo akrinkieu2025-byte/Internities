@@ -1,0 +1,22 @@
+Questions:,Question Text ,Answer Input Type
+1,Primary Work type ,Multi Select Chips (3) 
+2,Top 5 Responsibilities,transferred from Stage 0 question
+3,How structured is the work? ,Slider 1-5 (1 is unstructured) 
+4,Expected Autonomy,Slider 1-5 (1 is fully guided) 
+5,Stakeholder exposure level,Single select (None/internal/Cross Functional/External Clients/Hig level individuals
+6,Writing & Presenting Intensity,2 Slider 1-5 for writing and presenting
+7,Responsiblity Level ,Slider 1-5 
+8,Workplace Environment,Choose from Learning/Learning and Performing/Performing
+9,Analytical Thinking ,Slider 1-5
+10,Creativity Level,Slider 1-5 
+11,Communication Ability,Slider 1-5 
+12,Required Industry Experience ,Choose from None/Some Experience/A lot of Experience
+13,Leadership Mindset ,Slider 1-5 
+14,Required Hard Skills ,Bullet builder with importance Chooser (1-5)
+15,Nice to have hard skills ,Bullet builder with importance Chooser (1-5)
+16,Experience with Tools ,Bullet builder with importance Chooser (1-5)
+17,What does success look like?,Text 
+18,Top 3 traits of succeeding interns,Bullet builder with 3 bullets 
+19,"Top 3 ""failing"" reasons ",Bullet builder with 3 bullets 
+20,Ideal Candidate Background,Bullet builder with custom count of bullets 
+21,Further Requirements/Comments,Text 

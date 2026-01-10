@@ -45,6 +45,16 @@ button {
   font-family: inherit;
 }
 
+/* Ensure date/month picker icon is visible on dark backgrounds */
+.calendar-light::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.8;
+}
+
+.calendar-light::-ms-expand {
+  display: none;
+}
+
 /* Glassmorphism Card Styles */
 .glass-card {
   background: rgba(15, 23, 42, 0.4);

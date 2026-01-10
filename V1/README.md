@@ -76,6 +76,10 @@ npm install
      ```
      NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
      NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+     SUPABASE_URL=https://your-project.supabase.co
+     SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+     # OpenAI: use only this key; do not set org/project headers
+     OPENAI_API_KEY=your-openai-key
      ```
    - Save the file
 

@@ -8,19 +8,23 @@ const serverError = (msg) => NextResponse.json({ error: msg }, { status: 500 });
 const MIN_AXES = 6;
 const MAX_AXES = 10;
 const OPENAI_MODEL = process.env.OPENAI_MODEL_CHAT || process.env.OPENAI_MODEL || 'gpt-5.2-2025-12-11';
-const OPENAI_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_BASE = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
 
 const clamp = (num, min, max) => Math.max(min, Math.min(max, num));
 
 async function getActiveAxes() {
   const { data, error } = await supabaseAdmin
-    .from('skill_axes')
-    .select('id, axis_key, display_name')
-    .eq('is_active', true)
-    .order('created_at', { ascending: true });
+    .from('skill_axes_latest')
+    .select('axis_version_id, axis_key, display_name, definition, not_definition')
+    .order('axis_key', { ascending: true });
   if (error) throw new Error(error.message);
-  return data || [];
+  return (data || []).map((row) => ({
+    id: row.axis_version_id,
+    axis_key: row.axis_key,
+    display_name: row.display_name,
+    definition: row.definition,
+    not_definition: row.not_definition,
+  }));
 }
 
 async function loadRole(roleId) {
@@ -48,11 +52,27 @@ async function loadBestSnapshot(roleId) {
 
   const { data: scores, error: scoresErr } = await supabaseAdmin
     .from('radar_scores')
-    .select('axis_id, score_0_100, weight_0_1, min_required_0_100, confidence_0_1, reason, skill_axes(axis_key, display_name)')
+    .select(
+      `axis_version_id, score_0_100, weight_0_1, min_required_0_100, confidence_0_1, reason,
+       skill_axis_versions:axis_version_id (
+         axis_key,
+         skill_axis_localizations (locale, display_name, definition, not_definition)
+       )`
+    )
     .eq('snapshot_id', snapshot.id)
-    .order('axis_id', { ascending: true });
+    .order('axis_version_id', { ascending: true });
   if (scoresErr) throw new Error(scoresErr.message);
-  return { snapshot, scores: scores || [] };
+  const normalized = (scores || []).map((s) => {
+    const locs = s.skill_axis_versions?.skill_axis_localizations || [];
+    const en = locs.find((l) => l.locale === 'en') || locs[0] || null;
+    const displayName = en?.display_name || s.skill_axis_versions?.axis_key || null;
+    return {
+      ...s,
+      axis_key: s.skill_axis_versions?.axis_key,
+      skill_axes: { axis_key: s.skill_axis_versions?.axis_key, display_name: displayName },
+    };
+  });
+  return { snapshot, scores: normalized };
 }
 
 function ensureAxisCount(axes, activeAxes) {
@@ -73,7 +93,7 @@ function ensureAxisCount(axes, activeAxes) {
     for (const axis of activeAxes) {
       if (filtered.length >= MIN_AXES) break;
       if (seen.has(axis.axis_key)) continue;
-      filtered.push({ axis_key: axis.axis_key, label: axis.display_name, score_0_100: 60 });
+      filtered.push({ axis_key: axis.axis_key, label: axis.display_name, score_0_100: 60, weight_0_5: 5 });
     }
   }
 
@@ -92,6 +112,8 @@ function sanitizeRadar(raw, activeAxes) {
       score_0_100: clamp(Number(item.score_0_100 ?? item.score) || 0, 0, 100),
       min_required_0_100: item.min_required_0_100 === undefined ? null : clamp(Number(item.min_required_0_100), 0, 100),
       confidence_0_1: item.confidence_0_1 === undefined ? null : clamp(Number(item.confidence_0_1), 0, 1),
+      weight_0_5: item.weight_0_5 === undefined ? null : clamp(Number(item.weight_0_5), 0, 5),
+      must_have: item.must_have === undefined ? null : Boolean(item.must_have),
       rationale,
     };
   });
@@ -168,7 +190,16 @@ const radarChatSchema = {
 };
 
 async function callOpenAI({ role, radar, messages }) {
-  if (!OPENAI_KEY) throw new Error('OpenAI key missing');
+  const legacyKey = process.env.OPENAI_KEY || process.env.OPENAI_TOKEN;
+  const rawKey = process.env.OPENAI_API_KEY;
+  const trimmedKey = rawKey?.trim();
+  if (rawKey && rawKey.length !== trimmedKey?.length) {
+    console.warn('[WARN] OPENAI_API_KEY contained surrounding whitespace and was trimmed');
+  }
+  if (legacyKey) {
+    console.warn('[WARN] Legacy OpenAI key env present (OPENAI_KEY/OPENAI_TOKEN) but unused; please remove');
+  }
+  if (!trimmedKey) throw new Error('OpenAI key missing (OPENAI_API_KEY)');
   const baseContext = `Role: ${role.title}\nStatus: ${role.status}\nDescription: ${role.description || ''}\nResponsibilities: ${(role.responsibilities || []).join('; ')}\nRequirements: ${(role.requirements || []).join('; ')}\nCurrent radar (axis, score):\n${radarToText(radar)}`;
 
   const chatMessages = [
@@ -184,12 +215,33 @@ async function callOpenAI({ role, radar, messages }) {
     })),
   ];
 
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${trimmedKey}`,
+  };
+
+  console.log('[DEBUG] OpenAI Chat Config:', {
+    present: !!trimmedKey,
+    length: trimmedKey?.length || 0,
+    startsWith: trimmedKey ? trimmedKey.slice(0, 8) : null,
+    last4: trimmedKey ? trimmedKey.slice(-4) : null,
+    hasWhitespace: /\s/.test(trimmedKey || ''),
+    legacyVarsPresent: {
+      OPENAI_KEY: !!process.env.OPENAI_KEY,
+      OPENAI_TOKEN: !!process.env.OPENAI_TOKEN,
+    },
+  });
+
+  if ('OpenAI-Organization' in headers) {
+    throw new Error('Unexpected OpenAI-Organization header present; aborting request');
+  }
+  if ('OpenAI-Project' in headers) {
+    throw new Error('Unexpected OpenAI-Project header present; aborting request');
+  }
+
   const res = await fetch(`${OPENAI_BASE}/chat/completions`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${OPENAI_KEY}`,
-    },
+    headers,
     body: JSON.stringify({
       model: OPENAI_MODEL,
       messages: chatMessages,
@@ -267,6 +319,8 @@ function sanitizeForClient(radar) {
     score_0_100: a.score_0_100,
     min_required_0_100: a.min_required_0_100,
     confidence_0_1: a.confidence_0_1,
+    weight_0_5: a.weight_0_5,
+    must_have: a.must_have,
     rationale: a.rationale,
   }));
 }
@@ -296,6 +350,10 @@ export async function GET(_req, { params }) {
       axis_key: s.skill_axes?.axis_key,
       label: s.skill_axes?.display_name,
       score_0_100: Number(s.score_0_100),
+      min_required_0_100: s.min_required_0_100 ?? null,
+      confidence_0_1: s.confidence_0_1 ?? null,
+      weight_0_5: s.weight_0_1 === null || s.weight_0_1 === undefined ? null : s.weight_0_1 * 5,
+      must_have: null,
       rationale: s.reason,
     }));
 
@@ -347,6 +405,10 @@ export async function POST(_req, { params }) {
       axis_key: s.skill_axes?.axis_key,
       label: s.skill_axes?.display_name,
       score_0_100: Number(s.score_0_100),
+      min_required_0_100: s.min_required_0_100 ?? null,
+      confidence_0_1: s.confidence_0_1 ?? null,
+      weight_0_5: s.weight_0_1 === null || s.weight_0_1 === undefined ? null : s.weight_0_1 * 5,
+      must_have: null,
       rationale: s.reason,
     }));
     const workingRadar = sanitizeRadar(incomingRadar.length ? incomingRadar : fallbackRadarRaw, activeAxes);

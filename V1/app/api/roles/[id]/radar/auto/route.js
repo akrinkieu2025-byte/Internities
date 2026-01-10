@@ -5,16 +5,18 @@ import { getProfileIdFromAuth, assertCompanyMemberForRole } from '@/lib/apiAuth'
 const badRequest = (msg) => NextResponse.json({ error: msg }, { status: 400 });
 const serverError = (msg) => NextResponse.json({ error: msg }, { status: 500 });
 
+// Default to the requested GPT-5.2 model; allow override via env
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5.2-2025-12-11';
-const OPENAI_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_BASE = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+const MAX_AXES = 10;
 
-function buildHeuristicRadar(respMap) {
+function buildHeuristicRadar(respMap, activeAxes) {
   const textValues = Object.values(respMap || {}).filter(Boolean).join(' ');
   const charCount = textValues.length;
   const scoreBonus = Math.min(40, Math.floor(charCount / 80));
   const baseScore = 55 + scoreBonus;
-  const axes = ['analytical','communication','leadership','execution','creativity','technical','commercial','ownership','domain'];
+  const axesList = (activeAxes || []).slice(0, MAX_AXES).map((a) => a.axis_key);
+  const axes = axesList.length > 0 ? axesList : ['analytical','communication','leadership','execution','creativity','technical','commercial','ownership','domain'];
   return axes.map((axis_key) => ({
     axis_key,
     score_0_100: Math.max(30, Math.min(100, baseScore)),
@@ -25,11 +27,11 @@ function buildHeuristicRadar(respMap) {
 
 async function getActiveAxes() {
   const { data, error } = await supabaseAdmin
-    .from('skill_axes')
-    .select('id, axis_key')
-    .eq('is_active', true);
+    .from('skill_axes_latest')
+    .select('axis_version_id, axis_key, display_name')
+    .order('axis_key', { ascending: true });
   if (error) throw new Error(error.message);
-  return data || [];
+  return (data || []).map((row) => ({ id: row.axis_version_id, axis_key: row.axis_key, display_name: row.display_name }));
 }
 
 async function insertSnapshotWithScores({ roleId, profileId, radar }) {
@@ -51,13 +53,13 @@ async function insertSnapshotWithScores({ roleId, profileId, radar }) {
   if (snapErr) throw new Error(snapErr.message);
 
   const rows = radar.map((item) => {
-    const axisId = axisMap.get(item.axis_key);
-    if (!axisId) throw new Error(`Unknown axis_key: ${item.axis_key}`);
+    const axisVersionId = axisMap.get(item.axis_key);
+    if (!axisVersionId) throw new Error(`Unknown axis_key: ${item.axis_key}`);
     return {
       snapshot_id: snapshot.id,
-      axis_id: axisId,
+      axis_version_id: axisVersionId,
       score_0_100: item.score_0_100,
-      weight_0_1: item.weight_0_1 ?? null,
+      weight_0_1: item.weight_0_5 === undefined ? null : item.weight_0_5 / 5,
       min_required_0_100: item.min_required_0_100 ?? null,
       confidence_0_1: item.confidence_0_1 ?? null,
       reason: item.reason ?? null,
@@ -83,8 +85,11 @@ function validateRadar(raw, activeAxisKeys) {
       if (!axis_key || !activeAxisKeys.has(axis_key)) return null;
       const score_0_100 = clamp(Number(item.score_0_100), 0, 100);
       const confidence_0_1 = item.confidence_0_1 === undefined ? null : clamp(Number(item.confidence_0_1), 0, 1);
+      const weight_0_5 = item.weight_0_5 === undefined ? null : clamp(Number(item.weight_0_5), 0, 5);
+      const must_have = item.must_have === undefined ? null : Boolean(item.must_have);
+      const min_required_0_100 = item.min_required_0_100 === undefined ? null : clamp(Number(item.min_required_0_100), 0, 100);
       const reason = (item.reason || '').toString().trim() || 'Generated from AI';
-      return { axis_key, score_0_100, confidence_0_1, reason };
+      return { axis_key, score_0_100, confidence_0_1, reason, weight_0_5, must_have, min_required_0_100 };
     })
     .filter(Boolean);
   return cleaned;
@@ -102,6 +107,9 @@ const radarSchema = {
           score_0_100: { type: 'number' },
           confidence_0_1: { type: 'number' },
           reason: { type: 'string' },
+          weight_0_5: { type: 'number' },
+          must_have: { type: 'boolean' },
+          min_required_0_100: { type: 'number' },
         },
         // Some providers require all declared properties to be listed in "required" for json_schema
         required: ['axis_key', 'score_0_100', 'confidence_0_1', 'reason'],
@@ -147,47 +155,77 @@ function pickFirstParsed(candidateList) {
   return null;
 }
 
-async function callOpenAI({ role, answers, axes }) {
-  if (!OPENAI_KEY) throw new Error('OpenAI key missing');
+async function callOpenAI({ role, answers, axes, model = OPENAI_MODEL }) {
+  const legacyKey = process.env.OPENAI_KEY || process.env.OPENAI_TOKEN;
+  const rawKey = process.env.OPENAI_API_KEY;
+  const trimmedKey = rawKey?.trim();
+  if (rawKey && rawKey.length !== trimmedKey?.length) {
+    console.warn('[WARN] OPENAI_API_KEY contained surrounding whitespace and was trimmed');
+  }
+  if (legacyKey) {
+    console.warn('[WARN] Legacy OpenAI key env present (OPENAI_KEY/OPENAI_TOKEN) but unused; please remove');
+  }
+
+  if (!trimmedKey) throw new Error('OpenAI key missing (OPENAI_API_KEY)');
 
   const qa = answers
     .map((a) => `- ${a.role_questions?.slug || a.question_id}: ${a.answer_text || ''}`)
     .join('\n');
-  const axisList = axes.map((a) => a.axis_key).join(', ');
+  const axisCatalog = axes
+    .map((a) => `${a.axis_key}${a.display_name ? ` (${a.display_name})` : ''}`)
+    .join('; ');
 
   const messages = [
     {
       role: 'system',
       content:
-        'You are an assessor who scores role requirements into a skill radar. Respond ONLY with JSON matching the schema: {"scores":[{"axis_key": string, "score_0_100": number, "confidence_0_1": number, "reason": string}]}. Ensure one entry per provided axis. Scores 0-100, confidence 0-1.',
+        'You are an assessor who scores role requirements into a skill radar. Select the 10 most relevant axes (or fewer) from the provided catalog; never invent new axes. Respond ONLY with JSON matching: {"scores":[{"axis_key": string, "score_0_100": number, "confidence_0_1": number, "reason": string}]}. Do not return more than 10 items. Scores 0-100, confidence 0-1.',
     },
     {
       role: 'user',
-      content: `Axes: ${axisList}\nRole title: ${role.title}\nDescription: ${role.description || ''}\nResponsibilities: ${(role.responsibilities || []).join('; ')}\nRequirements: ${(role.requirements || []).join('; ')}\nAnswers:\n${qa}`,
+      content: `Axis catalog (choose up to 10 most relevant): ${axisCatalog}\nRole title: ${role.title}\nDescription: ${role.description || ''}\nResponsibilities: ${(role.responsibilities || []).join('; ')}\nRequirements: ${(role.requirements || []).join('; ')}\nAnswers:\n${qa}`,
     },
   ];
 
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${trimmedKey}`,
+  };
+
+  console.log('[DEBUG] OpenAI Config:', {
+    present: !!trimmedKey,
+    length: trimmedKey?.length || 0,
+    startsWith: trimmedKey ? trimmedKey.slice(0, 8) : null,
+    last4: trimmedKey ? trimmedKey.slice(-4) : null,
+    hasWhitespace: /\s/.test(trimmedKey || ''),
+    legacyVarsPresent: {
+      OPENAI_KEY: !!process.env.OPENAI_KEY,
+      OPENAI_TOKEN: !!process.env.OPENAI_TOKEN,
+    },
+    model,
+  });
+
+  if ('OpenAI-Organization' in headers) {
+    throw new Error('Unexpected OpenAI-Organization header present; aborting request');
+  }
+  if ('OpenAI-Project' in headers) {
+    throw new Error('Unexpected OpenAI-Project header present; aborting request');
+  }
+
   const res = await fetch(`${OPENAI_BASE}/chat/completions`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${OPENAI_KEY}`,
-    },
+    headers,
     body: JSON.stringify({
-      model: OPENAI_MODEL,
+      model,
       messages,
       temperature: 0.3,
-      // Some provider versions use max_completion_tokens instead of max_tokens
       max_completion_tokens: 700,
-      // Use json_object for broader provider compatibility (Azure/OpenAI) and better well-formed payloads
-      response_format: {
-        type: 'json_object',
-      },
+      response_format: { type: 'json_object' },
     }),
   });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
+    const text = await res.text();
     throw new Error(`OpenAI error ${res.status}: ${text.slice(0, 300)}`);
   }
 
@@ -224,18 +262,9 @@ async function callOpenAI({ role, answers, axes }) {
   if (!arr) throw new Error('Unexpected JSON structure');
 
   const activeKeys = new Set(axes.map((a) => a.axis_key));
-  const validated = validateRadar(arr, activeKeys);
-
-  const byKey = new Map(validated.map((v) => [v.axis_key, v]));
-  return axes.map((axis) => {
-    if (byKey.has(axis.axis_key)) return byKey.get(axis.axis_key);
-    return {
-      axis_key: axis.axis_key,
-      score_0_100: 55,
-      confidence_0_1: 0.4,
-      reason: 'Backfilled: missing from AI response',
-    };
-  });
+  const validated = validateRadar(arr, activeKeys).slice(0, MAX_AXES);
+  if (validated.length === 0) throw new Error('AI returned no valid axes');
+  return validated;
 }
 
 export async function POST(_req, { params }) {
@@ -277,17 +306,19 @@ export async function POST(_req, { params }) {
   let radar;
   let strategy = 'ai';
   let fallbackReason = null;
+  let modelUsed = OPENAI_MODEL;
   try {
-    radar = await callOpenAI({ role, answers: answers || [], axes });
+    radar = await callOpenAI({ role, answers: answers || [], axes, model: OPENAI_MODEL });
+    radar = (radar || []).slice(0, MAX_AXES);
   } catch (e) {
     strategy = 'fallback';
-    fallbackReason = e.message || 'Unknown error';
-    console.warn('AI radar generation failed, falling back. Reason:', e.message);
-    radar = buildHeuristicRadar(respMap);
+    fallbackReason = `AI unavailable: ${e?.message?.slice(0, 180) || 'unknown error'}; used heuristic radar`;
+    console.warn('AI radar generation failed, falling back. Reason:', e?.message);
+    radar = buildHeuristicRadar(respMap, axes);
   }
   try {
     const snapshotId = await insertSnapshotWithScores({ roleId, profileId, radar });
-    return NextResponse.json({ ok: true, snapshot_id: snapshotId, strategy, model: OPENAI_MODEL, fallbackReason });
+    return NextResponse.json({ ok: true, snapshot_id: snapshotId, strategy, model: modelUsed, fallbackReason });
   } catch (e) {
     return serverError(e.message);
   }

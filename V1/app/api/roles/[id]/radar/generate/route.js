@@ -7,11 +7,11 @@ const serverError = (msg) => NextResponse.json({ error: msg }, { status: 500 });
 
 async function getActiveAxes() {
   const { data, error } = await supabaseAdmin
-    .from('skill_axes')
-    .select('id, axis_key')
-    .eq('is_active', true);
+    .from('skill_axes_latest')
+    .select('axis_version_id, axis_key')
+    .order('axis_key', { ascending: true });
   if (error) throw new Error(error.message);
-  const map = new Map(data.map((a) => [a.axis_key, a.id]));
+  const map = new Map((data || []).map((a) => [a.axis_key, a.axis_version_id]));
   return map;
 }
 
@@ -37,9 +37,9 @@ async function insertSnapshotWithScores({ roleId, profileId, source, radar }) {
     if (!axisId) throw new Error(`Unknown axis_key: ${item.axis_key}`);
     return {
       snapshot_id: snapshot.id,
-      axis_id: axisId,
+      axis_version_id: axisId,
       score_0_100: item.score_0_100,
-      weight_0_1: item.weight_0_1 ?? null,
+      weight_0_1: item.weight_0_5 === undefined ? item.weight_0_1 ?? null : item.weight_0_5 / 5,
       min_required_0_100: item.min_required_0_100 ?? null,
       confidence_0_1: item.confidence_0_1 ?? null,
       reason: item.reason ?? null,

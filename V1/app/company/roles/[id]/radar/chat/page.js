@@ -12,6 +12,14 @@ const introMessage =
   'Tell the AI what kind of candidate you need, and it will rebalance the radar. Ask for fewer axes, adjusted scores, or rewritten labels. When ready, save the updated radar.';
 
 const MIN_AXES = 6;
+const clamp = (num, min, max) => Math.max(min, Math.min(max, num));
+
+const normalizeRadar = (list) =>
+  (list || []).map((a) => ({
+    ...a,
+    weight_0_5: a.weight_0_5 === null || a.weight_0_5 === undefined ? 5 : Number(a.weight_0_5),
+    must_have: a.must_have === undefined || a.must_have === null ? false : Boolean(a.must_have),
+  }));
 
 export default function RadarChatPage() {
   const params = useParams();
@@ -21,6 +29,8 @@ export default function RadarChatPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [role, setRole] = useState(null);
+  const [activeAxes, setActiveAxes] = useState([]);
+  const [selectedAxisKey, setSelectedAxisKey] = useState(null);
   const [radar, setRadar] = useState([]);
   const [threadId, setThreadId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -45,7 +55,9 @@ export default function RadarChatPage() {
         }
         const payload = await res.json();
         setRole(payload.role);
-        setRadar(payload.radar || []);
+        setRadar(normalizeRadar(payload.radar || []));
+        setActiveAxes(payload.active_axes || []);
+        setSelectedAxisKey((payload.radar || [])[0]?.axis_key || (payload.active_axes || [])[0]?.axis_key || null);
         setCanSave(payload.canSave !== false);
         setMessages([{ sender: 'ai', content: introMessage }]);
         setAlert(payload.canSave === false ? 'This role is archived. You can explore ideas but must un-archive before saving.' : null);
@@ -89,7 +101,7 @@ export default function RadarChatPage() {
         throw new Error(msg.error || 'Chat failed');
       }
       const payload = await res.json();
-      setRadar(payload.radar || radar);
+      setRadar(normalizeRadar(payload.radar || radar));
       setThreadId(payload.thread_id || threadId);
       setMessages((prev) => [...prev, { sender: 'ai', content: payload.reply || 'Updated the radar.' }]);
       if (payload.fallbackReason) setAlert(`Used fallback: ${payload.fallbackReason}`);
@@ -110,7 +122,12 @@ export default function RadarChatPage() {
         router.push('/auth/company/login');
         return;
       }
-      const sanitized = radar;
+      const sanitized = radar.map((a) => ({
+        ...a,
+        score_0_100: clamp(Number(a.score_0_100) || 0, 0, 100),
+        weight_0_5: a.weight_0_5 === null || a.weight_0_5 === undefined ? null : clamp(Number(a.weight_0_5) || 0, 0, 5),
+        must_have: a.must_have === undefined || a.must_have === null ? null : Boolean(a.must_have),
+      }));
       if (sanitized.length < MIN_AXES) throw new Error('Need at least 6 axes to save.');
       const res = await fetchWithAuth(
         `/api/roles/${roleId}/radar/save`,
@@ -134,7 +151,27 @@ export default function RadarChatPage() {
     }
   };
 
+  const updateRadarAxis = (axisKey, updates) => {
+    setRadar((prev) => prev.map((a) => (a.axis_key === axisKey ? { ...a, ...updates } : a)));
+  };
+
+  const handleScoreChange = (axisKey, value) => {
+    const num = clamp(Number(value) || 0, 0, 100);
+    updateRadarAxis(axisKey, { score_0_100: num });
+  };
+
+  const handleWeightChange = (axisKey, value) => {
+    const num = clamp(Number(value) || 0, 0, 5);
+    updateRadarAxis(axisKey, { weight_0_5: num });
+  };
+
+  const handleMustHaveToggle = (axisKey, checked) => {
+    updateRadarAxis(axisKey, { must_have: checked });
+  };
+
   const working = useMemo(() => ({ list: radar }), [radar]);
+  const axisMetaMap = useMemo(() => new Map((activeAxes || []).map((a) => [a.axis_key, a])), [activeAxes]);
+  const selectedMeta = selectedAxisKey ? axisMetaMap.get(selectedAxisKey) : null;
 
   if (loading) {
     return (
@@ -200,19 +237,74 @@ export default function RadarChatPage() {
                 />
               </div>
               <div className="overflow-hidden rounded-2xl border border-white/5 bg-slate-950/60">
-                <div className="grid grid-cols-2 text-xs uppercase tracking-[0.2em] text-brand-light/60 px-4 py-2">
+                <div className="grid grid-cols-4 text-xs uppercase tracking-[0.2em] text-brand-light/60 px-4 py-2">
                   <span>Axis</span>
                   <span>Score</span>
+                  <span>Weight</span>
+                  <span>Must-have</span>
                 </div>
                 <div className="divide-y divide-white/5">
-                  {working.list.map((a) => (
-                    <div key={a.axis_key} className="grid grid-cols-2 px-4 py-2 text-sm text-brand-light/80">
-                      <span className="truncate" title={a.label || a.axis_key}>{a.label || a.axis_key}</span>
-                      <span>{Math.round(a.score_0_100)}</span>
-                    </div>
-                  ))}
+                  {working.list.map((a) => {
+                    const isSelected = a.axis_key === selectedAxisKey;
+                    return (
+                      <button
+                        key={a.axis_key}
+                        type="button"
+                        onClick={() => setSelectedAxisKey(a.axis_key)}
+                        className={`grid grid-cols-4 px-4 py-2 text-sm text-left text-brand-light/80 items-center gap-2 w-full transition ${
+                          isSelected ? 'bg-white/5 border-l-4 border-brand-primary' : 'hover:bg-white/5'
+                        }`}
+                      >
+                        <span className="truncate" title={a.label || a.axis_key}>{a.label || a.axis_key}</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={Math.round(a.score_0_100 ?? 0)}
+                          onChange={(e) => handleScoreChange(a.axis_key, e.target.value)}
+                          className="w-20 rounded-lg bg-slate-900 border border-white/10 px-2 py-1 text-right text-sm text-white focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                        />
+                        <input
+                          type="number"
+                          min={0}
+                          max={5}
+                          step={0.1}
+                          value={a.weight_0_5 ?? 0}
+                          onChange={(e) => handleWeightChange(a.axis_key, e.target.value)}
+                          className="w-20 rounded-lg bg-slate-900 border border-white/10 px-2 py-1 text-right text-sm text-white focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                        />
+                        <label className="inline-flex items-center gap-2 text-xs">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(a.must_have)}
+                            onChange={(e) => handleMustHaveToggle(a.axis_key, e.target.checked)}
+                            className="h-4 w-4 rounded border-white/30 bg-slate-900"
+                          />
+                          <span className="text-brand-light/70">Required</span>
+                        </label>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
+              {selectedMeta && (
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.3em] text-brand-light/60">Axis details</p>
+                      <h3 className="text-lg font-semibold text-white">{selectedMeta.display_name}</h3>
+                      <p className="text-sm text-brand-light/70">Key: {selectedMeta.axis_key}</p>
+                    </div>
+                  </div>
+                  <div className="text-sm text-brand-light/80 space-y-2">
+                    <p>{selectedMeta.definition}</p>
+                    {selectedMeta.not_definition && (
+                      <p className="text-brand-light/60">Not: {selectedMeta.not_definition}</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </section>
 
             <section className="glass-card rounded-3xl border border-white/10 p-6 space-y-4 lg:col-span-3">

@@ -18,12 +18,11 @@ async function loadRoleStatus(roleId) {
 
 async function getActiveAxes() {
   const { data, error } = await supabaseAdmin
-    .from('skill_axes')
-    .select('id, axis_key, display_name')
-    .eq('is_active', true)
-    .order('created_at', { ascending: true });
+    .from('skill_axes_latest')
+    .select('axis_version_id, axis_key, display_name')
+    .order('axis_key', { ascending: true });
   if (error) throw new Error(error.message);
-  const byKey = new Map((data || []).map((row) => [row.axis_key, row]));
+  const byKey = new Map((data || []).map((row) => [row.axis_key, { id: row.axis_version_id, axis_key: row.axis_key, display_name: row.display_name }]));
   return byKey;
 }
 
@@ -41,6 +40,8 @@ function sanitizeRadar(raw, axisMap) {
       min_required_0_100: item.min_required_0_100 === undefined ? null : clamp(Number(item.min_required_0_100), 0, 100),
       confidence_0_1: item.confidence_0_1 === undefined ? null : clamp(Number(item.confidence_0_1), 0, 1),
       rationale: item.rationale || item.reason || null,
+      weight_0_5: item.weight_0_5 === undefined ? null : clamp(Number(item.weight_0_5), 0, 5),
+      must_have: item.must_have === undefined ? null : Boolean(item.must_have),
     });
     if (list.length >= MAX_AXES) break;
   }
@@ -95,9 +96,9 @@ async function upsertDraftSnapshot({ roleId, profileId, radar, axisMap }) {
     if (!axisMeta) throw new Error(`Unknown axis_key: ${item.axis_key}`);
     return {
       snapshot_id: snapshotId,
-      axis_id: axisMeta.id,
+      axis_version_id: axisMeta.id,
       score_0_100: item.score_0_100,
-      weight_0_1: null,
+      weight_0_1: item.weight_0_5 === undefined ? null : item.weight_0_5 / 5,
       min_required_0_100: item.min_required_0_100,
       confidence_0_1: item.confidence_0_1,
       reason: item.rationale,

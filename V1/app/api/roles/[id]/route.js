@@ -45,10 +45,25 @@ export async function GET(_request, { params }) {
   if (snapshot) {
     const { data: scoreRows, error: scoreErr } = await supabaseAdmin
       .from('radar_scores')
-      .select('score_0_100, weight_0_1, min_required_0_100, confidence_0_1, reason, skill_axes(axis_key, display_name)')
+      .select(
+        `axis_version_id, score_0_100, weight_0_1, min_required_0_100, confidence_0_1, reason,
+         skill_axis_versions:axis_version_id (
+           axis_key,
+           skill_axis_localizations (locale, display_name)
+         )`
+      )
       .eq('snapshot_id', snapshot.id);
     if (scoreErr) return serverError(scoreErr.message);
-    scores = scoreRows || [];
+    scores = (scoreRows || []).map((s) => {
+      const locs = s.skill_axis_versions?.skill_axis_localizations || [];
+      const en = locs.find((l) => l.locale === 'en') || locs[0] || null;
+      const displayName = en?.display_name || s.skill_axis_versions?.axis_key || null;
+      return {
+        ...s,
+        axis_key: s.skill_axis_versions?.axis_key,
+        skill_axes: { axis_key: s.skill_axis_versions?.axis_key, display_name: displayName },
+      };
+    });
   }
 
   return NextResponse.json({ role, radar: snapshot ? { snapshot, scores } : null });

@@ -68,34 +68,34 @@ export default function StudentSignupPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-gradient-to-br from-brand-dark to-slate-900 flex items-center justify-center pt-24">
+      <main className="min-h-screen bg-brand-dark text-brand-light flex items-center justify-center pt-24 pb-12">
         <div className="w-full max-w-md">
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-8">
-            <h1 className="text-3xl font-bold mb-2">Create Student Account</h1>
-            <p className="text-gray-400 mb-6">Sign up as a student to apply for internships.</p>
+          <div className="bg-white/5 border border-white/10 rounded-xl p-8 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+            <h1 className="text-3xl font-bold mb-2 text-white">Create Student Account</h1>
+            <p className="text-brand-light/70 mb-6">Sign up as a student to apply for internships.</p>
 
             {error && <div className="bg-red-900/20 border border-red-700 text-red-300 px-4 py-3 rounded-lg mb-6">{error}</div>}
 
             <form onSubmit={handleSignup} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Email</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-primary" placeholder="you@example.com" />
+                <label className="block text-sm font-medium mb-2 text-brand-light">Email</label>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full bg-slate-900/80 border border-white/10 rounded-lg px-4 py-2 text-white placeholder:text-brand-light/50 focus:outline-none focus:ring-2 focus:ring-brand-primary" placeholder="you@example.com" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Password</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-primary" placeholder="••••••••" />
+                <label className="block text-sm font-medium mb-2 text-brand-light">Password</label>
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full bg-slate-900/80 border border-white/10 rounded-lg px-4 py-2 text-white placeholder:text-brand-light/50 focus:outline-none focus:ring-2 focus:ring-brand-primary" placeholder="••••••••" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Confirm Password</label>
-                <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-primary" placeholder="••••••••" />
+                <label className="block text-sm font-medium mb-2 text-brand-light">Confirm Password</label>
+                <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required className="w-full bg-slate-900/80 border border-white/10 rounded-lg px-4 py-2 text-white placeholder:text-brand-light/50 focus:outline-none focus:ring-2 focus:ring-brand-primary" placeholder="••••••••" />
               </div>
 
-              <button type="submit" disabled={loading} className="w-full bg-brand-primary text-white font-semibold py-2 rounded-lg hover:bg-blue-600 transition disabled:opacity-50">{loading ? 'Creating...' : 'Create Account'}</button>
+              <button type="submit" disabled={loading} className="w-full bg-brand-primary text-white font-semibold py-2 rounded-lg hover:opacity-90 transition disabled:opacity-50 shadow-glow-blue">{loading ? 'Creating...' : 'Create Account'}</button>
             </form>
 
-            <p className="text-center text-gray-400 mt-6">Already have an account? <Link href={`/auth/login${roleFromURL ? `?role=${roleFromURL}` : ''}`} className="text-brand-primary hover:underline">Login</Link></p>
+            <p className="text-center text-brand-light/70 mt-6">Already have an account? <Link href={`/auth/login${roleFromURL ? `?role=${roleFromURL}` : ''}`} className="text-brand-primary hover:underline">Login</Link></p>
           </div>
         </div>
       </main>

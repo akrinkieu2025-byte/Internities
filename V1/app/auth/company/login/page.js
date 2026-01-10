@@ -104,11 +104,11 @@ export default function CompanyLoginPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center pt-24 pb-12">
+      <main className="min-h-screen bg-brand-dark text-brand-light flex items-center justify-center pt-24 pb-12">
         <div className="w-full max-w-md px-6">
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-8">
+          <div className="bg-white/5 border border-white/10 rounded-xl p-8 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
             <h1 className="text-3xl font-bold mb-2 text-white">Company Login</h1>
-            <p className="text-gray-400 mb-6">
+            <p className="text-brand-light/70 mb-6">
               Sign in to manage your internship postings and applications.
             </p>
 
@@ -120,7 +120,7 @@ export default function CompanyLoginPage() {
 
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-brand-light mb-2">
                   Email Address
                 </label>
                 <input
@@ -128,13 +128,13 @@ export default function CompanyLoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                  className="w-full bg-slate-900/80 border border-white/10 rounded-lg px-4 py-2 text-white placeholder:text-brand-light/50 focus:outline-none focus:ring-2 focus:ring-brand-primary transition"
                   placeholder="company@example.com"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-brand-light mb-2">
                   Password
                 </label>
                 <input
@@ -142,7 +142,7 @@ export default function CompanyLoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                  className="w-full bg-slate-900/80 border border-white/10 rounded-lg px-4 py-2 text-white placeholder:text-brand-light/50 focus:outline-none focus:ring-2 focus:ring-brand-primary transition"
                   placeholder="••••••••"
                 />
               </div>
@@ -150,17 +150,17 @@ export default function CompanyLoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-brand-primary hover:opacity-90 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed shadow-glow-blue"
               >
                 {loading ? 'Signing in...' : 'Sign In'}
               </button>
             </form>
 
-            <p className="text-center text-gray-400 mt-6">
+              <p className="text-center text-brand-light/70 mt-6">
               Don&apos;t have a company account?{' '}
               <Link
                 href="/auth/company/signup"
-                className="text-indigo-400 hover:text-indigo-300 font-medium"
+                className="text-brand-primary hover:opacity-90 font-medium"
               >
                 Sign up here
               </Link>
