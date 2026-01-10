@@ -210,9 +210,6 @@ export default function EditRolePage() {
   }, [requiredSlugs, questions, responses]);
 
   const isFormValid = missingRequired.length === 0;
-  const [residencyOpen, setResidencyOpen] = useState(false);
-  const [rtwOpen, setRtwOpen] = useState(false);
-  const [languagesOpen, setLanguagesOpen] = useState(false);
 
   useEffect(() => {
     const init = async () => {
