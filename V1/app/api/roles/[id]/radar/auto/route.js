@@ -9,18 +9,21 @@ const serverError = (msg) => NextResponse.json({ error: msg }, { status: 500 });
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5.2-2025-12-11';
 const OPENAI_BASE = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
 const MAX_AXES = 10;
+const MIN_AXES = 10;
 
 function buildHeuristicRadar(respMap, activeAxes) {
   const textValues = Object.values(respMap || {}).filter(Boolean).join(' ');
   const charCount = textValues.length;
   const scoreBonus = Math.min(40, Math.floor(charCount / 80));
   const baseScore = 55 + scoreBonus;
-  const axesList = (activeAxes || []).slice(0, MAX_AXES).map((a) => a.axis_key);
-  const axes = axesList.length > 0 ? axesList : ['analytical','communication','leadership','execution','creativity','technical','commercial','ownership','domain'];
+  const axesList = (activeAxes || []).map((a) => a.axis_key);
+  const fallback = ['analytical', 'communication', 'leadership', 'execution', 'creativity', 'technical', 'commercial', 'ownership', 'domain', 'teamwork'];
+  const merged = [...axesList, ...fallback];
+  const unique = Array.from(new Set(merged));
+  const axes = unique.slice(0, Math.max(MIN_AXES, MAX_AXES));
   return axes.map((axis_key) => ({
     axis_key,
     score_0_100: Math.max(30, Math.min(100, baseScore)),
-    confidence_0_1: 0.55,
     reason: 'Auto-generated from questionnaire responses (heuristic placeholder)',
   }));
 }
@@ -45,7 +48,7 @@ async function insertSnapshotWithScores({ roleId, profileId, radar }) {
       subject_id: roleId,
       role_id: roleId,
       source: 'ai_initial',
-      status: 'draft',
+      status: 'confirmed',
       created_by: profileId,
     })
     .select('id')
@@ -61,7 +64,6 @@ async function insertSnapshotWithScores({ roleId, profileId, radar }) {
       score_0_100: item.score_0_100,
       weight_0_1: item.weight_0_5 === undefined ? null : item.weight_0_5 / 5,
       min_required_0_100: item.min_required_0_100 ?? null,
-      confidence_0_1: item.confidence_0_1 ?? null,
       reason: item.reason ?? null,
     };
   });
@@ -70,6 +72,15 @@ async function insertSnapshotWithScores({ roleId, profileId, radar }) {
     const { error: scoresErr } = await supabaseAdmin.from('radar_scores').insert(rows);
     if (scoresErr) throw new Error(scoresErr.message);
   }
+
+  // Demote other confirmed snapshots for this role
+  await supabaseAdmin
+    .from('radar_snapshots')
+    .update({ status: 'draft' })
+    .eq('subject_type', 'role')
+    .eq('subject_id', roleId)
+    .eq('status', 'confirmed')
+    .neq('id', snapshot.id);
   return snapshot.id;
 }
 
@@ -84,15 +95,31 @@ function validateRadar(raw, activeAxisKeys) {
       const axis_key = String(item.axis_key || '').trim();
       if (!axis_key || !activeAxisKeys.has(axis_key)) return null;
       const score_0_100 = clamp(Number(item.score_0_100), 0, 100);
-      const confidence_0_1 = item.confidence_0_1 === undefined ? null : clamp(Number(item.confidence_0_1), 0, 1);
       const weight_0_5 = item.weight_0_5 === undefined ? null : clamp(Number(item.weight_0_5), 0, 5);
       const must_have = item.must_have === undefined ? null : Boolean(item.must_have);
       const min_required_0_100 = item.min_required_0_100 === undefined ? null : clamp(Number(item.min_required_0_100), 0, 100);
       const reason = (item.reason || '').toString().trim() || 'Generated from AI';
-      return { axis_key, score_0_100, confidence_0_1, reason, weight_0_5, must_have, min_required_0_100 };
+      return { axis_key, score_0_100, reason, weight_0_5, must_have, min_required_0_100 };
     })
     .filter(Boolean);
-  return cleaned;
+
+  if (cleaned.length < MIN_AXES) {
+    const used = new Set(cleaned.map((c) => c.axis_key));
+    for (const axis_key of activeAxisKeys) {
+      if (cleaned.length >= MIN_AXES) break;
+      if (used.has(axis_key)) continue;
+      cleaned.push({
+        axis_key,
+        score_0_100: 60,
+        reason: 'Filled to minimum axes',
+        weight_0_5: null,
+        must_have: null,
+        min_required_0_100: null,
+      });
+    }
+  }
+
+  return cleaned.slice(0, MAX_AXES);
 }
 
 const radarSchema = {
@@ -105,14 +132,13 @@ const radarSchema = {
         properties: {
           axis_key: { type: 'string' },
           score_0_100: { type: 'number' },
-          confidence_0_1: { type: 'number' },
           reason: { type: 'string' },
           weight_0_5: { type: 'number' },
           must_have: { type: 'boolean' },
           min_required_0_100: { type: 'number' },
         },
         // Some providers require all declared properties to be listed in "required" for json_schema
-        required: ['axis_key', 'score_0_100', 'confidence_0_1', 'reason'],
+        required: ['axis_key', 'score_0_100', 'reason'],
         additionalProperties: false,
       },
       minItems: 1,
@@ -179,7 +205,7 @@ async function callOpenAI({ role, answers, axes, model = OPENAI_MODEL }) {
     {
       role: 'system',
       content:
-        'You are an assessor who scores role requirements into a skill radar. Select the 10 most relevant axes (or fewer) from the provided catalog; never invent new axes. Respond ONLY with JSON matching: {"scores":[{"axis_key": string, "score_0_100": number, "confidence_0_1": number, "reason": string}]}. Do not return more than 10 items. Scores 0-100, confidence 0-1.',
+        'You are an assessor who scores role requirements into a skill radar. Select the 10 most relevant axes (or fewer) from the provided catalog; never invent new axes. Respond ONLY with JSON matching: {"scores":[{"axis_key": string, "score_0_100": number, "reason": string}]}. Do not return more than 10 items. Scores must be 0-100.',
     },
     {
       role: 'user',

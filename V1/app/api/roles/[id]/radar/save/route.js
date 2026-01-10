@@ -38,7 +38,6 @@ function sanitizeRadar(raw, axisMap) {
       axis_key: axisKey,
       score_0_100: clamp(Number(item.score_0_100 ?? item.score) || 0, 0, 100),
       min_required_0_100: item.min_required_0_100 === undefined ? null : clamp(Number(item.min_required_0_100), 0, 100),
-      confidence_0_1: item.confidence_0_1 === undefined ? null : clamp(Number(item.confidence_0_1), 0, 1),
       rationale: item.rationale || item.reason || null,
       weight_0_5: item.weight_0_5 === undefined ? null : clamp(Number(item.weight_0_5), 0, 5),
       must_have: item.must_have === undefined ? null : Boolean(item.must_have),
@@ -59,37 +58,21 @@ function sanitizeRadar(raw, axisMap) {
   return list.slice(0, MAX_AXES);
 }
 
-async function upsertDraftSnapshot({ roleId, profileId, radar, axisMap }) {
-  const { data: existing } = await supabaseAdmin
+async function createConfirmedSnapshot({ roleId, profileId, radar, axisMap }) {
+  const { data, error } = await supabaseAdmin
     .from('radar_snapshots')
-    .select('id, status')
-    .eq('subject_type', 'role')
-    .eq('subject_id', roleId)
-    .eq('status', 'draft')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  let snapshotId = existing?.id;
-  if (!snapshotId) {
-    const { data, error } = await supabaseAdmin
-      .from('radar_snapshots')
-      .insert({
-        subject_type: 'role',
-        subject_id: roleId,
-        role_id: roleId,
-        source: 'ai_chat',
-        status: 'draft',
-        created_by: profileId,
-      })
-      .select('id')
-      .single();
-    if (error) throw new Error(error.message);
-    snapshotId = data.id;
-  }
-
-  // Replace existing scores
-  await supabaseAdmin.from('radar_scores').delete().eq('snapshot_id', snapshotId);
+    .insert({
+      subject_type: 'role',
+      subject_id: roleId,
+      role_id: roleId,
+      source: 'ai_chat',
+      status: 'confirmed',
+      created_by: profileId,
+    })
+    .select('id')
+    .single();
+  if (error) throw new Error(error.message);
+  const snapshotId = data.id;
 
   const rows = radar.map((item) => {
     const axisMeta = axisMap.get(item.axis_key);
@@ -100,7 +83,6 @@ async function upsertDraftSnapshot({ roleId, profileId, radar, axisMap }) {
       score_0_100: item.score_0_100,
       weight_0_1: item.weight_0_5 === undefined ? null : item.weight_0_5 / 5,
       min_required_0_100: item.min_required_0_100,
-      confidence_0_1: item.confidence_0_1,
       reason: item.rationale,
     };
   });
@@ -109,6 +91,15 @@ async function upsertDraftSnapshot({ roleId, profileId, radar, axisMap }) {
     const { error: insertErr } = await supabaseAdmin.from('radar_scores').insert(rows);
     if (insertErr) throw new Error(insertErr.message);
   }
+
+  // Demote other confirmed snapshots to draft
+  await supabaseAdmin
+    .from('radar_snapshots')
+    .update({ status: 'draft' })
+    .eq('subject_type', 'role')
+    .eq('subject_id', roleId)
+    .eq('status', 'confirmed')
+    .neq('id', snapshotId);
 
   return snapshotId;
 }
@@ -139,9 +130,9 @@ export async function POST(_req, { params }) {
     const radar = sanitizeRadar(incomingRadar, axisMap);
     if (radar.length < MIN_AXES) return badRequest('Not enough valid axes to save');
 
-    const snapshotId = await upsertDraftSnapshot({ roleId, profileId, radar, axisMap });
+    const snapshotId = await createConfirmedSnapshot({ roleId, profileId, radar, axisMap });
 
-    return NextResponse.json({ ok: true, snapshot_id: snapshotId, axes: radar.length });
+    return NextResponse.json({ ok: true, snapshot_id: snapshotId, axes: radar.length, status: 'confirmed' });
   } catch (e) {
     return serverError(e.message);
   }

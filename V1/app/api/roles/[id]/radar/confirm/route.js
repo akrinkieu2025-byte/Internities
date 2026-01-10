@@ -10,6 +10,15 @@ export async function POST(_req, { params }) {
   const roleId = params?.id;
   if (!roleId) return badRequest('Missing role id');
 
+  let body;
+  try {
+    body = await _req.json();
+  } catch (_e) {
+    return badRequest('Invalid JSON body');
+  }
+  const snapshotId = body?.snapshot_id;
+  if (!snapshotId) return badRequest('snapshot_id required');
+
   try {
     const profileId = await getProfileIdFromAuth(_req.headers);
     await assertCompanyMemberForRole(profileId, roleId);
@@ -23,13 +32,11 @@ export async function POST(_req, { params }) {
     .select('id')
     .eq('subject_type', 'role')
     .eq('subject_id', roleId)
-    .eq('status', 'draft')
-    .order('created_at', { ascending: false })
-    .limit(1)
+    .eq('id', snapshotId)
     .maybeSingle();
 
   if (snapErr) return serverError(snapErr.message);
-  if (!snapshot) return badRequest('No draft snapshot to confirm');
+  if (!snapshot) return badRequest('Snapshot not found for this role');
 
   const { error: updateErr } = await supabaseAdmin
     .from('radar_snapshots')

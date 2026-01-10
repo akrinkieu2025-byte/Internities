@@ -38,7 +38,6 @@ function buildHeuristicRadar(respMap, activeAxes) {
   return axes.map((axis_key) => ({
     axis_key,
     score_0_100: Math.max(30, Math.min(100, baseScore)),
-    confidence_0_1: 0.55,
     reason: 'Auto-generated from questionnaire responses (heuristic placeholder)',
   }));
 }
@@ -72,7 +71,6 @@ async function insertRadarDraft({ roleId, profileId, radar }) {
       score_0_100: item.score_0_100,
       weight_0_1: item.weight_0_5 === undefined ? item.weight_0_1 ?? null : item.weight_0_5 / 5,
       min_required_0_100: item.min_required_0_100 ?? null,
-      confidence_0_1: item.confidence_0_1 ?? null,
       reason: item.reason ?? null,
     };
   });

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import RadarChart from '@/components/RadarChart';
 import { supabase } from '@/lib/supabaseClient';
@@ -17,14 +17,14 @@ const clamp = (num, min, max) => Math.max(min, Math.min(max, num));
 const normalizeRadar = (list) =>
   (list || []).map((a) => ({
     ...a,
-    weight_0_5: a.weight_0_5 === null || a.weight_0_5 === undefined ? 5 : Number(a.weight_0_5),
-    must_have: a.must_have === undefined || a.must_have === null ? false : Boolean(a.must_have),
   }));
 
 export default function RadarChatPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const roleId = params?.id;
+  const snapshotId = searchParams?.get('snapshot_id') || null;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -39,6 +39,7 @@ export default function RadarChatPage() {
   const [busySave, setBusySave] = useState(false);
   const [alert, setAlert] = useState(null);
   const [canSave, setCanSave] = useState(true);
+  const [versionMeta, setVersionMeta] = useState({ version: null, total: null });
 
   useEffect(() => {
     const init = async () => {
@@ -48,7 +49,12 @@ export default function RadarChatPage() {
         return;
       }
       try {
-        const res = await fetchWithAuth(`/api/roles/${roleId}/radar/chat`, { method: 'GET' }, supabase, sessionData.session);
+        const res = await fetchWithAuth(
+          `/api/roles/${roleId}/radar/chat${snapshotId ? `?snapshot_id=${snapshotId}` : ''}`,
+          { method: 'GET' },
+          supabase,
+          sessionData.session
+        );
         if (!res.ok) {
           const msg = await res.json().catch(() => ({ error: 'Failed to load radar chat' }));
           throw new Error(msg.error || 'Failed to load radar chat');
@@ -59,6 +65,7 @@ export default function RadarChatPage() {
         setActiveAxes(payload.active_axes || []);
         setSelectedAxisKey((payload.radar || [])[0]?.axis_key || (payload.active_axes || [])[0]?.axis_key || null);
         setCanSave(payload.canSave !== false);
+        setVersionMeta({ version: payload.version || null, total: payload.total_versions || null });
         setMessages([{ sender: 'ai', content: introMessage }]);
         setAlert(payload.canSave === false ? 'This role is archived. You can explore ideas but must un-archive before saving.' : null);
         setLoading(false);
@@ -84,7 +91,7 @@ export default function RadarChatPage() {
         return;
       }
       const res = await fetchWithAuth(
-        `/api/roles/${roleId}/radar/chat`,
+        `/api/roles/${roleId}/radar/chat${snapshotId ? `?snapshot_id=${snapshotId}` : ''}`,
         {
           method: 'POST',
           body: JSON.stringify({
@@ -123,10 +130,11 @@ export default function RadarChatPage() {
         return;
       }
       const sanitized = radar.map((a) => ({
-        ...a,
+        axis_key: a.axis_key,
+        label: a.label,
         score_0_100: clamp(Number(a.score_0_100) || 0, 0, 100),
-        weight_0_5: a.weight_0_5 === null || a.weight_0_5 === undefined ? null : clamp(Number(a.weight_0_5) || 0, 0, 5),
-        must_have: a.must_have === undefined || a.must_have === null ? null : Boolean(a.must_have),
+        min_required_0_100: a.min_required_0_100,
+        rationale: a.rationale,
       }));
       if (sanitized.length < MIN_AXES) throw new Error('Need at least 6 axes to save.');
       const res = await fetchWithAuth(
@@ -159,15 +167,7 @@ export default function RadarChatPage() {
     const num = clamp(Number(value) || 0, 0, 100);
     updateRadarAxis(axisKey, { score_0_100: num });
   };
-
-  const handleWeightChange = (axisKey, value) => {
-    const num = clamp(Number(value) || 0, 0, 5);
-    updateRadarAxis(axisKey, { weight_0_5: num });
-  };
-
-  const handleMustHaveToggle = (axisKey, checked) => {
-    updateRadarAxis(axisKey, { must_have: checked });
-  };
+  
 
   const working = useMemo(() => ({ list: radar }), [radar]);
   const axisMetaMap = useMemo(() => new Map((activeAxes || []).map((a) => [a.axis_key, a])), [activeAxes]);
@@ -206,7 +206,14 @@ export default function RadarChatPage() {
             <div className="space-y-1">
               <p className="text-xs uppercase tracking-[0.4em] text-brand-light/60">Skill radar</p>
               <h1 className="text-3xl font-semibold">Master the skill radar</h1>
-              {role?.title && <p className="text-brand-light/70">{role.title}</p>}
+              <div className="flex flex-wrap items-center gap-3 text-sm text-brand-light/70">
+                {role?.title && <p>{role.title}</p>}
+                {versionMeta.version && (
+                  <span className="px-2 py-1 rounded-lg border border-white/10 bg-white/5 text-xs font-semibold text-brand-light/80">
+                    Version {versionMeta.version}{versionMeta.total ? ` of ${versionMeta.total}` : ''}
+                  </span>
+                )}
+              </div>
             </div>
             <Link
               href={`/company/roles/${roleId}`}
@@ -223,7 +230,7 @@ export default function RadarChatPage() {
           )}
 
           <div className="grid gap-6 lg:grid-cols-5">
-            <section className="glass-card rounded-3xl border border-white/10 p-6 space-y-4 lg:col-span-2">
+            <section className="glass-card rounded-3xl border border-white/10 p-6 space-y-4 lg:col-span-3">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.35em] text-brand-light/60">Preview</p>
@@ -237,11 +244,9 @@ export default function RadarChatPage() {
                 />
               </div>
               <div className="overflow-hidden rounded-2xl border border-white/5 bg-slate-950/60">
-                <div className="grid grid-cols-4 text-xs uppercase tracking-[0.2em] text-brand-light/60 px-4 py-2">
+                <div className="grid grid-cols-2 text-xs uppercase tracking-[0.2em] text-brand-light/60 px-4 py-2">
                   <span>Axis</span>
                   <span>Score</span>
-                  <span>Weight</span>
-                  <span>Must-have</span>
                 </div>
                 <div className="divide-y divide-white/5">
                   {working.list.map((a) => {
@@ -251,7 +256,7 @@ export default function RadarChatPage() {
                         key={a.axis_key}
                         type="button"
                         onClick={() => setSelectedAxisKey(a.axis_key)}
-                        className={`grid grid-cols-4 px-4 py-2 text-sm text-left text-brand-light/80 items-center gap-2 w-full transition ${
+                        className={`grid grid-cols-2 px-4 py-2 text-sm text-left text-brand-light/80 items-center gap-2 w-full transition ${
                           isSelected ? 'bg-white/5 border-l-4 border-brand-primary' : 'hover:bg-white/5'
                         }`}
                       >
@@ -265,24 +270,6 @@ export default function RadarChatPage() {
                           onChange={(e) => handleScoreChange(a.axis_key, e.target.value)}
                           className="w-20 rounded-lg bg-slate-900 border border-white/10 px-2 py-1 text-right text-sm text-white focus:outline-none focus:ring-1 focus:ring-brand-primary"
                         />
-                        <input
-                          type="number"
-                          min={0}
-                          max={5}
-                          step={0.1}
-                          value={a.weight_0_5 ?? 0}
-                          onChange={(e) => handleWeightChange(a.axis_key, e.target.value)}
-                          className="w-20 rounded-lg bg-slate-900 border border-white/10 px-2 py-1 text-right text-sm text-white focus:outline-none focus:ring-1 focus:ring-brand-primary"
-                        />
-                        <label className="inline-flex items-center gap-2 text-xs">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(a.must_have)}
-                            onChange={(e) => handleMustHaveToggle(a.axis_key, e.target.checked)}
-                            className="h-4 w-4 rounded border-white/30 bg-slate-900"
-                          />
-                          <span className="text-brand-light/70">Required</span>
-                        </label>
                       </button>
                     );
                   })}
@@ -291,23 +278,19 @@ export default function RadarChatPage() {
               {selectedMeta && (
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-2">
                   <div className="flex items-center justify-between">
-                    <div>
+                    <div className="max-w-full">
                       <p className="text-xs uppercase tracking-[0.3em] text-brand-light/60">Axis details</p>
-                      <h3 className="text-lg font-semibold text-white">{selectedMeta.display_name}</h3>
-                      <p className="text-sm text-brand-light/70">Key: {selectedMeta.axis_key}</p>
+                      <h3 className="text-lg font-semibold text-white break-words">{selectedMeta.display_name}</h3>
                     </div>
                   </div>
-                  <div className="text-sm text-brand-light/80 space-y-2">
+                  <div className="text-sm text-brand-light/80 space-y-2 max-w-full break-words whitespace-pre-wrap">
                     <p>{selectedMeta.definition}</p>
-                    {selectedMeta.not_definition && (
-                      <p className="text-brand-light/60">Not: {selectedMeta.not_definition}</p>
-                    )}
                   </div>
                 </div>
               )}
             </section>
 
-            <section className="glass-card rounded-3xl border border-white/10 p-6 space-y-4 lg:col-span-3">
+            <section className="glass-card rounded-3xl border border-white/10 p-6 space-y-4 lg:col-span-2">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.35em] text-brand-light/60">AI chat</p>

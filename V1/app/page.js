@@ -166,6 +166,11 @@ export default function Home() {
     setIsDemoOpen(true);
   };
 
+  useEffect(() => {
+    // Warm up the get-started route to minimize visible flicker during redirect
+    router.prefetch?.('/get-started');
+  }, [router]);
+
   const handleVerifyDemo = async (event) => {
     event.preventDefault();
     if (!demoCode.trim()) {
@@ -183,7 +188,6 @@ export default function Home() {
       });
       const data = await response.json();
       if (data.valid) {
-        setIsDemoOpen(false);
         router.push('/get-started');
       } else {
         setError('This code isn’t valid. Please try again or contact us for access.');
@@ -231,7 +235,7 @@ export default function Home() {
       <FooterSection />
 
       {isDemoOpen && (
-        <div className="modal-overlay" onClick={() => setIsDemoOpen(false)}>
+        <div className="modal-overlay" onClick={() => { if (!isVerifying) setIsDemoOpen(false); }}>
           <div
             className="modal-panel max-w-lg w-full bg-gradient-to-br from-slate-950/90 via-slate-900/85 to-brand-primary/15 backdrop-blur-2xl border border-white/15 shadow-[0_20px_80px_-20px_rgba(0,0,0,0.6)] rounded-3xl p-6"
             onClick={(event) => event.stopPropagation()}
@@ -258,8 +262,9 @@ export default function Home() {
               </form>
               <button
                 type="button"
-                onClick={() => setIsDemoOpen(false)}
-                className="text-sm text-brand-light/70 hover:text-brand-light"
+                onClick={() => !isVerifying && setIsDemoOpen(false)}
+                className="text-sm text-brand-light/70 hover:text-brand-light disabled:opacity-60"
+                disabled={isVerifying}
               >
                 Cancel
               </button>

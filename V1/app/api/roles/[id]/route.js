@@ -28,45 +28,51 @@ export async function GET(_request, { params }) {
   if (memErr) return serverError(memErr.message);
   if (!membership) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  // Latest radar snapshot + scores
-  const { data: snapshot, error: snapErr } = await supabaseAdmin
+  // All radar snapshots + scores (allows version navigation on the client)
+  const { data: snapshots, error: snapErr } = await supabaseAdmin
     .from('radar_snapshots')
     .select('id, created_at, status, source')
     .eq('subject_type', 'role')
     .eq('subject_id', roleId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
+    .order('created_at', { ascending: true });
 
-  let scores = [];
   if (snapErr && snapErr.code !== 'PGRST116') {
     return serverError(snapErr.message);
   }
-  if (snapshot) {
+
+  let radars = [];
+  if (snapshots && snapshots.length > 0) {
+    const snapshotIds = snapshots.map((s) => s.id);
     const { data: scoreRows, error: scoreErr } = await supabaseAdmin
       .from('radar_scores')
       .select(
-        `axis_version_id, score_0_100, weight_0_1, min_required_0_100, confidence_0_1, reason,
+        `snapshot_id, axis_version_id, score_0_100, weight_0_1, min_required_0_100, reason,
          skill_axis_versions:axis_version_id (
            axis_key,
            skill_axis_localizations (locale, display_name)
          )`
       )
-      .eq('snapshot_id', snapshot.id);
+      .in('snapshot_id', snapshotIds);
     if (scoreErr) return serverError(scoreErr.message);
-    scores = (scoreRows || []).map((s) => {
+
+    const scoresBySnapshot = {};
+    for (const s of scoreRows || []) {
       const locs = s.skill_axis_versions?.skill_axis_localizations || [];
       const en = locs.find((l) => l.locale === 'en') || locs[0] || null;
       const displayName = en?.display_name || s.skill_axis_versions?.axis_key || null;
-      return {
+      const normalized = {
         ...s,
         axis_key: s.skill_axis_versions?.axis_key,
         skill_axes: { axis_key: s.skill_axis_versions?.axis_key, display_name: displayName },
       };
-    });
+      if (!scoresBySnapshot[s.snapshot_id]) scoresBySnapshot[s.snapshot_id] = [];
+      scoresBySnapshot[s.snapshot_id].push(normalized);
+    }
+
+    radars = snapshots.map((snap) => ({ snapshot: snap, scores: scoresBySnapshot[snap.id] || [] }));
   }
 
-  return NextResponse.json({ role, radar: snapshot ? { snapshot, scores } : null });
+  return NextResponse.json({ role, radars });
 }
 
 export async function DELETE(_request, { params }) {

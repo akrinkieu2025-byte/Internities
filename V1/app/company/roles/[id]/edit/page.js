@@ -150,67 +150,6 @@ export default function EditRolePage() {
   const [residencyOpen, setResidencyOpen] = useState(false);
   const [rtwOpen, setRtwOpen] = useState(false);
   const [languagesOpen, setLanguagesOpen] = useState(false);
-  const requiredSlugs = useMemo(
-    () => new Set([
-      'role_title',
-      'industry',
-      'department_name',
-      'office_location',
-      'workplace_type',
-      'internship_type',
-      'start_date',
-      'company_overview',
-      'key_responsibilities',
-      'learning_outcomes',
-      'application_deadline',
-      'residency_requirements',
-      'right_to_work',
-      'enrolled_currently',
-      'degree_level',
-      'language_requirements',
-      'required_hard_skills',
-      'nice_to_have_hard_skills',
-      'required_soft_skills',
-      'experience_with_tools',
-      'success_definition',
-      'top_succeeding_traits',
-      'top_failing_reasons',
-      'top_responsibilities',
-      'work_structure',
-      'expected_autonomy',
-      'stakeholder_exposure',
-      'writing_presenting_intensity',
-      'responsibility_level',
-      'workplace_environment',
-      'analytical_thinking',
-      'creativity_level',
-      'communication_ability',
-      'industry_experience',
-      'leadership_mindset',
-    ]),
-    []
-  );
-
-  const missingRequired = useMemo(() => {
-    const missing = [];
-    requiredSlugs.forEach((slug) => {
-      const q = questions.find((x) => x.slug === slug);
-      const val = responses[slug];
-      let ok = false;
-      if ((q?.answer_type === 'bullet_builder_weighted') || ['required_hard_skills', 'nice_to_have_hard_skills', 'required_soft_skills', 'experience_with_tools'].includes(slug)) {
-        ok = parseWeightedBullets(val).length > 0;
-      } else if (q?.answer_type?.includes('bullet') || ['key_responsibilities', 'learning_outcomes', 'top_responsibilities', 'residency_requirements', 'right_to_work'].includes(slug)) {
-        ok = parseBullets(val, slug).length > 0;
-      } else {
-        ok = Boolean(String(val || '').trim());
-      }
-      if (!ok) missing.push(slug);
-    });
-    return missing;
-  }, [requiredSlugs, questions, responses]);
-
-  const isFormValid = missingRequired.length === 0;
-
   useEffect(() => {
     const init = async () => {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -454,6 +393,67 @@ export default function EditRolePage() {
     setResponses((prev) => ({ ...prev, [slug]: next.join('\n') }));
   };
 
+  const requiredSlugs = useMemo(
+    () => new Set([
+      'role_title',
+      'industry',
+      'department_name',
+      'office_location',
+      'workplace_type',
+      'internship_type',
+      'start_date',
+      'company_overview',
+      'key_responsibilities',
+      'learning_outcomes',
+      'application_deadline',
+      'residency_requirements',
+      'right_to_work',
+      'enrolled_currently',
+      'degree_level',
+      'language_requirements',
+      'required_hard_skills',
+      'nice_to_have_hard_skills',
+      'required_soft_skills',
+      'experience_with_tools',
+      'success_definition',
+      'top_succeeding_traits',
+      'top_failing_reasons',
+      'top_responsibilities',
+      'work_structure',
+      'expected_autonomy',
+      'stakeholder_exposure',
+      'writing_presenting_intensity',
+      'responsibility_level',
+      'workplace_environment',
+      'analytical_thinking',
+      'creativity_level',
+      'communication_ability',
+      'industry_experience',
+      'leadership_mindset',
+    ]),
+    []
+  );
+
+  const missingRequired = useMemo(() => {
+    const missing = [];
+    requiredSlugs.forEach((slug) => {
+      const q = questions.find((x) => x.slug === slug);
+      const val = responses[slug];
+      let ok = false;
+      if ((q?.answer_type === 'bullet_builder_weighted') || ['required_hard_skills', 'nice_to_have_hard_skills', 'required_soft_skills', 'experience_with_tools'].includes(slug)) {
+        ok = parseWeightedBullets(val).length > 0;
+      } else if (q?.answer_type?.includes('bullet') || ['key_responsibilities', 'learning_outcomes', 'top_responsibilities', 'residency_requirements', 'right_to_work'].includes(slug)) {
+        ok = parseBullets(val, slug).length > 0;
+      } else {
+        ok = Boolean(String(val || '').trim());
+      }
+      if (!ok) missing.push(slug);
+    });
+    return missing;
+  }, [requiredSlugs, questions, responses]);
+
+  const isFormValid = missingRequired.length === 0;
+
   const handleMultiToggle = (slug, value) => {
     setResponses((prev) => {
       const current = (prev[slug] || '').split(/,\s*/).filter(Boolean);
@@ -592,13 +592,16 @@ export default function EditRolePage() {
         supabase,
         sessionData.session
       );
-      if (!resAnswers.ok) {
-        const msg = await resAnswers.json().catch(() => ({ error: 'Failed to save answers' }));
+      const answersPayload = resAnswers.ok ? await resAnswers.json().catch(() => ({ ok: false })) : null;
+      if (!resAnswers.ok || !answersPayload?.ok) {
+        const msg = answersPayload || (await resAnswers.json().catch(() => ({ error: 'Failed to save answers' })));
         throw new Error(msg.error || 'Failed to save answers');
       }
 
-      // Regenerate radar automatically after saving answers
-      await fetchWithAuth(`/api/roles/${roleId}/radar/auto`, { method: 'POST' }, supabase, sessionData.session);
+      // Regenerate radar only if answers changed
+      if (answersPayload.changed) {
+        await fetchWithAuth(`/api/roles/${roleId}/radar/auto`, { method: 'POST' }, supabase, sessionData.session);
+      }
 
       router.push(`/company/roles/${roleId}`);
     } catch (err) {

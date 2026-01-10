@@ -9,6 +9,7 @@ const MIN_AXES = 6;
 const MAX_AXES = 10;
 const OPENAI_MODEL = process.env.OPENAI_MODEL_CHAT || process.env.OPENAI_MODEL || 'gpt-5.2-2025-12-11';
 const OPENAI_BASE = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+const OPENAI_FALLBACK_MODEL = process.env.OPENAI_FALLBACK_MODEL || 'gpt-4o-mini';
 
 const clamp = (num, min, max) => Math.max(min, Math.min(max, num));
 
@@ -37,23 +38,32 @@ async function loadRole(roleId) {
   return data;
 }
 
-async function loadBestSnapshot(roleId) {
-  // Align with role detail page: simply take the most recent snapshot for the role
-  const { data: snapshot, error: snapErr } = await supabaseAdmin
+async function loadSnapshot(roleId, snapshotId) {
+  const { data: snapshots, error: listErr } = await supabaseAdmin
     .from('radar_snapshots')
     .select('id, status, source, created_at')
     .eq('subject_type', 'role')
     .eq('subject_id', roleId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (snapErr && snapErr.code !== 'PGRST116') throw new Error(snapErr.message);
-  if (!snapshot) return { snapshot: null, scores: [] };
+    .order('created_at', { ascending: true });
+
+  if (listErr && listErr.code !== 'PGRST116') throw new Error(listErr.message);
+  const snapshotsList = snapshots || [];
+  if (snapshotsList.length === 0) return { snapshot: null, scores: [], version: null, total: 0 };
+
+  let snapshot = null;
+  if (snapshotId) {
+    snapshot = snapshotsList.find((s) => s.id === snapshotId) || null;
+  }
+  if (!snapshot) {
+    snapshot = snapshotsList[snapshotsList.length - 1]; // fallback to latest
+  }
+
+  const versionIndex = snapshotsList.findIndex((s) => s.id === snapshot.id);
 
   const { data: scores, error: scoresErr } = await supabaseAdmin
     .from('radar_scores')
     .select(
-      `axis_version_id, score_0_100, weight_0_1, min_required_0_100, confidence_0_1, reason,
+      `axis_version_id, score_0_100, weight_0_1, min_required_0_100, reason,
        skill_axis_versions:axis_version_id (
          axis_key,
          skill_axis_localizations (locale, display_name, definition, not_definition)
@@ -72,53 +82,59 @@ async function loadBestSnapshot(roleId) {
       skill_axes: { axis_key: s.skill_axis_versions?.axis_key, display_name: displayName },
     };
   });
-  return { snapshot, scores: normalized };
+  return { snapshot, scores: normalized, version: versionIndex + 1, total: snapshotsList.length };
 }
 
 function ensureAxisCount(axes, activeAxes) {
   const activeMap = new Map(activeAxes.map((a) => [a.axis_key, a]));
   const seen = new Set();
   const filtered = [];
-  for (const item of axes || []) {
-    const axisKey = String(item.axis_key || '').trim();
-    if (!axisKey || !activeMap.has(axisKey)) continue;
-    if (seen.has(axisKey)) continue;
-    seen.add(axisKey);
-    filtered.push(item);
-    if (filtered.length >= MAX_AXES) break;
-  }
+    for (const item of axes || []) {
+      const axisKey = String(item.axis_key || '').trim();
+      if (!axisKey || !activeMap.has(axisKey)) continue;
+      if (seen.has(axisKey)) continue;
+      seen.add(axisKey);
+      filtered.push(item);
+      if (filtered.length >= MAX_AXES) break;
+    }
 
   const needed = Math.max(MIN_AXES - filtered.length, 0);
   if (needed > 0) {
     for (const axis of activeAxes) {
       if (filtered.length >= MIN_AXES) break;
       if (seen.has(axis.axis_key)) continue;
-      filtered.push({ axis_key: axis.axis_key, label: axis.display_name, score_0_100: 60, weight_0_5: 5 });
+            filtered.push({ axis_key: axis.axis_key, label: axis.display_name, score_0_100: 60 });
     }
   }
 
   return filtered.slice(0, MAX_AXES);
 }
 
-function sanitizeRadar(raw, activeAxes) {
+function sanitizeRadar(raw, activeAxes, fallbackRadar = []) {
   const activeMap = new Map(activeAxes.map((a) => [a.axis_key, a]));
-  const prepared = ensureAxisCount(raw || [], activeAxes).map((item) => {
+  const current = new Map((fallbackRadar || []).map((a) => [a.axis_key, { ...a }]));
+  const rejected = [];
+
+  for (const item of raw || []) {
     const axisKey = String(item.axis_key || '').trim();
+    if (!axisKey || !activeMap.has(axisKey)) {
+      if (axisKey) rejected.push(axisKey);
+      continue;
+    }
     const axisMeta = activeMap.get(axisKey) || {};
     const rationale = item.rationale || item.reason || 'AI suggestion';
-    return {
+    const label = axisMeta.display_name || item.display_name || item.label || axisKey;
+    current.set(axisKey, {
       axis_key: axisKey,
-      label: String(item.label || item.display_name || axisMeta.display_name || axisKey).trim(),
+      label: String(label).trim(),
       score_0_100: clamp(Number(item.score_0_100 ?? item.score) || 0, 0, 100),
       min_required_0_100: item.min_required_0_100 === undefined ? null : clamp(Number(item.min_required_0_100), 0, 100),
-      confidence_0_1: item.confidence_0_1 === undefined ? null : clamp(Number(item.confidence_0_1), 0, 1),
-      weight_0_5: item.weight_0_5 === undefined ? null : clamp(Number(item.weight_0_5), 0, 5),
-      must_have: item.must_have === undefined ? null : Boolean(item.must_have),
       rationale,
-    };
-  });
+    });
+  }
 
-  return prepared;
+  const prepared = ensureAxisCount(Array.from(current.values()), activeAxes);
+  return { radar: prepared, rejectedInvalidAxes: rejected };
 }
 
 function stripCodeFences(text) {
@@ -189,7 +205,7 @@ const radarChatSchema = {
   strict: true,
 };
 
-async function callOpenAI({ role, radar, messages }) {
+async function callOpenAI({ role, radar, messages, activeAxes, modelOverride }) {
   const legacyKey = process.env.OPENAI_KEY || process.env.OPENAI_TOKEN;
   const rawKey = process.env.OPENAI_API_KEY;
   const trimmedKey = rawKey?.trim();
@@ -200,13 +216,14 @@ async function callOpenAI({ role, radar, messages }) {
     console.warn('[WARN] Legacy OpenAI key env present (OPENAI_KEY/OPENAI_TOKEN) but unused; please remove');
   }
   if (!trimmedKey) throw new Error('OpenAI key missing (OPENAI_API_KEY)');
-  const baseContext = `Role: ${role.title}\nStatus: ${role.status}\nDescription: ${role.description || ''}\nResponsibilities: ${(role.responsibilities || []).join('; ')}\nRequirements: ${(role.requirements || []).join('; ')}\nCurrent radar (axis, score):\n${radarToText(radar)}`;
+  const axisCatalog = (activeAxes || []).map((a) => `${a.axis_key}${a.display_name ? ` (${a.display_name})` : ''}`).join('; ');
+  const baseContext = `Role: ${role.title}\nStatus: ${role.status}\nDescription: ${role.description || ''}\nResponsibilities: ${(role.responsibilities || []).join('; ')}\nRequirements: ${(role.requirements || []).join('; ')}\nAvailable axes (catalog): ${axisCatalog}\nCurrent radar (axis, score):\n${radarToText(radar)}`;
 
   const chatMessages = [
     {
       role: 'system',
       content:
-        'You help hiring managers rebalance a skill radar. Always return JSON matching the given schema. Keep axes concise (6-10) and scores 0-100. Prefer the provided active axes; do not invent new ones. Include a helpful natural language reply explaining your changes.',
+        'You help hiring managers rebalance a skill radar. Always return JSON matching the given schema. Keep axes concise (6-10) and scores 0-100. You MUST only use axes from the provided catalog; never invent or accept new axis names. If the user requests an axis that is not in the catalog, do NOT remove existing axes—instead, explain that the axis is unavailable, ask them to describe the skill, and suggest the closest catalog axis. You have the full catalog list above—use it. Include a helpful natural language reply explaining your changes.',
     },
     { role: 'user', content: baseContext },
     ...(messages || []).map((m) => ({
@@ -239,24 +256,39 @@ async function callOpenAI({ role, radar, messages }) {
     throw new Error('Unexpected OpenAI-Project header present; aborting request');
   }
 
-  const res = await fetch(`${OPENAI_BASE}/chat/completions`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      model: OPENAI_MODEL,
-      messages: chatMessages,
-      temperature: 0.3,
-      max_completion_tokens: 900,
-      response_format: { type: 'json_schema', json_schema: radarChatSchema },
-    }),
-  });
+  const tryModel = async (modelName) => {
+    const res = await fetch(`${OPENAI_BASE}/chat/completions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: modelName,
+        messages: chatMessages,
+        temperature: 0.3,
+        max_completion_tokens: 900,
+        response_format: { type: 'json_schema', json_schema: radarChatSchema },
+      }),
+    });
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`OpenAI error ${res.status}: ${text.slice(0, 300)}`);
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      const err = new Error(`OpenAI error ${res.status}: ${text.slice(0, 300)}`);
+      err.status = res.status;
+      throw err;
+    }
+    return res.json();
+  };
+
+  let json;
+  const primaryModel = modelOverride || OPENAI_MODEL;
+  try {
+    json = await tryModel(primaryModel);
+  } catch (err) {
+    const status = err?.status;
+    const shouldFallback = status === 403 || status === 404;
+    if (!shouldFallback) throw err;
+    json = await tryModel(OPENAI_FALLBACK_MODEL);
   }
 
-  const json = await res.json();
   const message = json?.choices?.[0]?.message;
   const candidatePayloads = [
     message?.parsed,
@@ -276,6 +308,7 @@ async function callOpenAI({ role, radar, messages }) {
 
   const parsed = candidatePayloads.map(tryParse).find((p) => p) || null;
   if (!parsed) throw new Error('Could not parse AI response');
+  parsed.model = json?.model || primaryModel;
   return parsed;
 }
 
@@ -318,9 +351,6 @@ function sanitizeForClient(radar) {
     label: a.label,
     score_0_100: a.score_0_100,
     min_required_0_100: a.min_required_0_100,
-    confidence_0_1: a.confidence_0_1,
-    weight_0_5: a.weight_0_5,
-    must_have: a.must_have,
     rationale: a.rationale,
   }));
 }
@@ -329,6 +359,7 @@ export async function GET(_req, { params }) {
   if (!supabaseAdmin) return serverError('Supabase admin not configured');
   const roleId = params?.id;
   if (!roleId) return badRequest('Missing role id');
+  const snapshotId = _req.nextUrl.searchParams.get('snapshot_id') || null;
 
   let profileId;
   try {
@@ -343,7 +374,7 @@ export async function GET(_req, { params }) {
     const [role, activeAxes, radar] = await Promise.all([
       loadRole(roleId),
       getActiveAxes(),
-      loadBestSnapshot(roleId),
+      loadSnapshot(roleId, snapshotId),
     ]);
 
     const baseRadarRaw = (radar.scores || []).map((s) => ({
@@ -351,17 +382,18 @@ export async function GET(_req, { params }) {
       label: s.skill_axes?.display_name,
       score_0_100: Number(s.score_0_100),
       min_required_0_100: s.min_required_0_100 ?? null,
-      confidence_0_1: s.confidence_0_1 ?? null,
       weight_0_5: s.weight_0_1 === null || s.weight_0_1 === undefined ? null : s.weight_0_1 * 5,
       must_have: null,
       rationale: s.reason,
     }));
 
-    const workingRadar = sanitizeRadar(baseRadarRaw, activeAxes);
+    const { radar: workingRadar } = sanitizeRadar(baseRadarRaw, activeAxes);
 
     return NextResponse.json({
       role,
       snapshot: radar.snapshot,
+      version: radar.version,
+      total_versions: radar.total,
       radar: sanitizeForClient(workingRadar),
       active_axes: activeAxes,
       canSave: role.status !== 'archived',
@@ -375,6 +407,7 @@ export async function POST(_req, { params }) {
   if (!supabaseAdmin) return serverError('Supabase admin not configured');
   const roleId = params?.id;
   if (!roleId) return badRequest('Missing role id');
+  const snapshotId = _req.nextUrl.searchParams.get('snapshot_id') || null;
 
   let profileId;
   try {
@@ -398,7 +431,7 @@ export async function POST(_req, { params }) {
     const [role, activeAxes, baseline] = await Promise.all([
       loadRole(roleId),
       getActiveAxes(),
-      loadBestSnapshot(roleId),
+      loadSnapshot(roleId, snapshotId),
     ]);
 
     const fallbackRadarRaw = (baseline.scores || []).map((s) => ({
@@ -406,12 +439,11 @@ export async function POST(_req, { params }) {
       label: s.skill_axes?.display_name,
       score_0_100: Number(s.score_0_100),
       min_required_0_100: s.min_required_0_100 ?? null,
-      confidence_0_1: s.confidence_0_1 ?? null,
       weight_0_5: s.weight_0_1 === null || s.weight_0_1 === undefined ? null : s.weight_0_1 * 5,
       must_have: null,
       rationale: s.reason,
     }));
-    const workingRadar = sanitizeRadar(incomingRadar.length ? incomingRadar : fallbackRadarRaw, activeAxes);
+    const { radar: workingRadar } = sanitizeRadar(incomingRadar.length ? incomingRadar : fallbackRadarRaw, activeAxes);
 
     let aiReply = 'I could not adjust the radar right now, please try again.';
     let aiRadar = workingRadar;
@@ -419,10 +451,15 @@ export async function POST(_req, { params }) {
     let fallbackReason = null;
 
     try {
-      const aiResponse = await callOpenAI({ role, radar: workingRadar, messages: userMessages });
+      const aiResponse = await callOpenAI({ role, radar: workingRadar, messages: userMessages, activeAxes });
       aiReply = aiResponse.reply || aiReply;
-      aiRadar = sanitizeRadar(aiResponse?.radar?.axes || workingRadar, activeAxes);
-      modelUsed = OPENAI_MODEL;
+      const { radar: cleaned, rejectedInvalidAxes } = sanitizeRadar(aiResponse?.radar?.axes || workingRadar, activeAxes, workingRadar);
+      aiRadar = cleaned;
+      if (rejectedInvalidAxes.length) {
+        const list = rejectedInvalidAxes.slice(0, 5).join(', ');
+        aiReply = `${aiReply}\n\nSkipped axes not in catalog: ${list}. Please describe the desired skill and I will suggest the closest axis from the library.`;
+      }
+      modelUsed = aiResponse?.model || OPENAI_MODEL;
     } catch (err) {
       fallbackReason = err.message || 'AI call failed';
       console.warn('Radar chat AI failed:', err.message);
